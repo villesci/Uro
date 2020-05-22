@@ -622,104 +622,7 @@ mean(acc24a$LT50)
 sqrt(var(acc20a$LT50))
 sqrt(var(acc24a$LT50))
 ```
-## Sensitivity Analysis
 
-We note that there is a large difference in thermal tolerance at the coldest site. What would happen if we removed those points?
-```{r}
-ggplot(prot1,aes(x=t.mean.sst,y=LT50,shape=acc,color=oce,label=run_ID))+geom_point()+facet_wrap(oce~.)+geom_text(aes(label=run_ID))
-```
-WE are interestred in runs 14 and 17. Let's remove them each, and run the suite of models. I want to see that the overall pattern remains the same in the linear model.
-
-```{r}
-sens1<-filter(prot1,run_ID!="17")
-sens2<-filter(prot1,run_ID!="14")
-
-mods.sens1<-list(
-"null"=glm(LT50~1,sens1,family="gaussian"),
-"lat"=glm(LT50~lat,sens1,family="gaussian"),#latitude
-"mean"=glm(LT50~mean.sst,sens1,family="gaussian"),#mean yearly sst
-"s.mean"=glm(LT50~s.mean.sst,sens1,family="gaussian"),#mean summer sst (06/01 - 09/01)
-"q.mean"=glm(LT50~q.mean.sst,sens1,family="gaussian"),#upper 25% quartile of summer mean sst
-"t.mean"=glm(LT50~t.mean.sst,sens1,family="gaussian"),#upper 10th percentile of summer mean sst
-"acc"=glm(LT50~acc,sens1,family="gaussian"),
-"lat.acc"=glm(LT50~lat+acc,sens1,family="gaussian"),
-"mean.acc"=glm(LT50~mean.sst+acc,sens1,family="gaussian"),
-"s.mean.acc"=glm(LT50~s.mean.sst,sens1,family="gaussian"),
-"q.mean.acc"=glm(LT50~q.mean.sst+acc,sens1,family="gaussian"),
-"t.mean.acc"=glm(LT50~t.mean.sst+acc,sens1,family="gaussian"),
-"lat*acc"=glm(LT50~lat*acc,sens1,family="gaussian"),
-"mean*acc"=glm(LT50~mean.sst*acc,sens1,family="gaussian"),
-"s.mean*acc"=glm(LT50~s.mean.sst*acc,sens1,family="gaussian"),
-"q.mean*acc"=glm(LT50~q.mean.sst*acc,sens1,family="gaussian"),
-"t.mean*acc"=glm(LT50~t.mean.sst*acc,sens1,family="gaussian"))
-
-mods.sens2<-list(
-"null"=glm(LT50~1,sens2,family="gaussian"),
-"lat"=glm(LT50~lat,sens2,family="gaussian"),#latitude
-"mean"=glm(LT50~mean.sst,sens2,family="gaussian"),#mean yearly sst
-"s.mean"=glm(LT50~s.mean.sst,sens2,family="gaussian"),#mean summer sst (06/01 - 09/01)
-"q.mean"=glm(LT50~q.mean.sst,sens2,family="gaussian"),#upper 25% quartile of summer mean sst
-"t.mean"=glm(LT50~t.mean.sst,sens2,family="gaussian"),#upper 10th percentile of summer mean sst
-"acc"=glm(LT50~acc,sens2,family="gaussian"),
-"lat.acc"=glm(LT50~lat+acc,sens2,family="gaussian"),
-"mean.acc"=glm(LT50~mean.sst+acc,sens2,family="gaussian"),
-"s.mean.acc"=glm(LT50~s.mean.sst,sens2,family="gaussian"),
-"q.mean.acc"=glm(LT50~q.mean.sst+acc,sens2,family="gaussian"),
-"t.mean.acc"=glm(LT50~t.mean.sst+acc,sens2,family="gaussian"),
-"lat*acc"=glm(LT50~lat*acc,sens2,family="gaussian"),
-"mean*acc"=glm(LT50~mean.sst*acc,sens2,family="gaussian"),
-"s.mean*acc"=glm(LT50~s.mean.sst*acc,sens2,family="gaussian"),
-"q.mean*acc"=glm(LT50~q.mean.sst*acc,sens2,family="gaussian"),
-"t.mean*acc"=glm(LT50~t.mean.sst*acc,sens2,family="gaussian"))
-
-aictab(mods.sens1)
-
-aictab(mods.sens2)
-
-```
-When we remove the highest CTmax (run_ID=17), we get several environment drive top models. When we remove the lowest CTmax (run_ID=14), we see acclimation wins out like the original data. Lat.acc is the next highest. To do a true sensitivity analysis, we will have to use the same environmental metric as before: 90th percentile. Let's plot and see what happens
-
-```{r}
-sens.mod1<-glm(LT50~t.mean.sst*acc,sens1,family="gaussian")
-sens.mod2<-glm(LT50~t.mean.sst*acc,sens2,family="gaussian")
-
-summary(sens.mod1)
-summary(sens.mod2)
-sens.mod1$acc<-as.factor(sens.mod1$acc)
-
-make_model.sens1<-function(sens1) {glm(LT50 ~ t.mean.sst,sens1,family="gaussian")}
-
-hist(resid(sens.mod1))
-
-#make models for both acclimation temperatures
-models1.sens<-dlply(sens1,"acc",.fun=make_model.sens1)
-predvals.acc.sens1<-ldply(models1.sens,.fun=predictvals,xvar="t.mean.sst",yvar="LT50")
-
-ggplot(sens1,aes(x=t.mean.sst,y=LT50,color=acc,shape=acc))+geom_point(size=2)+geom_line(data=predvals.acc.sens1)+theme_classic()+scale_color_manual(labels=c("20","24"),name="Acclimation",values=c("blue","red"))+theme_classic()+scale_shape_manual(labels=c("a","p"),name="ocean",values=c(16,17))+xlab("Habitat Temperature (SST °C; 90th percentile summer months)")
-#####################sens2
-make_model.sens2<-function(sens2) {glm(LT50 ~ t.mean.sst,sens2,family="gaussian")}
-
-models2.sens<-dlply(sens2,"acc",.fun=make_model.sens2)
-predvals.acc.sens2<-ldply(models2.sens,.fun=predictvals,xvar="t.mean.sst",yvar="LT50")
-
-ggplot(sens2,aes(x=t.mean.sst,y=LT50,color=acc,shape=acc))+geom_point(size=2)+geom_line(data=predvals.acc.sens2)+theme_classic()+scale_color_manual(labels=c("20","24"),name="Acclimation",values=c("blue","red"))+theme_classic()+scale_shape_manual(labels=c("a","p"),name="ocean",values=c(16,17))+xlab("Habitat Temperature (SST °C; 90th percentile summer months)")
-
-
-```
-
-All telling, it is unrealistic that the lower LT50 value is the error. But, even if it is, We see that removing it maintains the slopes and stacked position of the glms, but these parameters are no longer significant. Therefore, the models I have chosen are most sensitive to the removal of run_ID = 14.
-
-Now, it is worth seeing what the mean CTmax values look like if we ignore any latitudinal effect.
-```{r}
-ggplot(prot1,aes(x=acc,y=LT50))+geom_boxplot()
-
-t.test(LT50~acc,data=prot1)
-
-prot1 %>% group_by(acc) %>% summarise_each(funs(mean, sd))
-
-
-```
-The acclimations are different on their own. THis is significant. 
 
 ## Comparing protocols 1 and 2 (acclimation 20) 
 
@@ -849,94 +752,15 @@ lt50s%>%
   group_by(c(site,acc))%>%
   summarise_each(funs(mean, sd),wt.t)
 
-#90th percentile, ocean data included but not in model
-ggplot(prot1,aes(x=t.mean.sst,y=wt.t,fill=oce,group=lat,color=oce,shape=acc))+theme_classic()+theme(text=element_text(family="sanserif",size=22))+labs(y="Warming Tolerance",x="Latitude")+scale_fill_manual(labels=c("Atlantic","Pacific"),name="Ocean", values=c('#F8766D','#00BFC4'))+scale_color_manual(labels=c("Atlantic","Pacific"),name="Ocean",values=c('#F8766D','#00BFC4'))+scale_x_continuous(name="(SST °C; 90th percentile summer months)",limits=c(18,32),breaks=c(18,20,22,24,26,28,30,32))+scale_shape_manual(name="Acclimation",labels = c("20°C","24°C"),values=c(21,24))+geom_segment(aes(x = 23.69700, xend = 30, y = 37.3998  + -0.9271 *23.69700, yend = 37.3998  + -0.9271 *30.07281	),size=1.5,color='#F8766D')+geom_point(size=3)
-  #geom_segment(aes(x = 23.69700, xend = 30, y = (37.3998-1.6409)  + -0.9271 *23.69700, yend = (37.3998-1.6409)  + -0.9271 *30.07281	),size=1.5,color='#F8766D',linetype=2)
-
 
 #90th percentile, ocean data included but not in model
-#this is it fam
+
 ggplot(prot1,aes(x=t.mean.sst,y=wt.t,fill=acc,group=lat,shape=oce,color=acc))+theme_classic()+theme(text=element_text(family="sanserif",size=22))+labs(y="Warming Tolerance",x="Latitude")+scale_fill_manual(labels=c("20°C","24°C"),name="Acclimation", values=c('blue','red'))+scale_color_manual(labels=c("20°C","24°C"),name="Acclimation",values=c('blue','red'))+scale_x_continuous(name=expression(paste("T"[hab], " (SST °C)")),limits=c(18,32),breaks=c(18,20,22,24,26,28,30,32))+scale_shape_manual(name="Ocean",labels = c("Atlantic","Pacific"),values=c(21,24))+geom_segment(aes(x = 19.78000, xend = 30, y = 39.88198      + -1.02166 *19.78000, yend = 39.88198      + -1.02166 *30.07281	),size=1.5,color='blue')+geom_point(size=3)
 
-#original model
-ggplot(prot1,aes(x=lat,y=wt.t,fill=oce,group=lat,color=oce,shape=acc))+theme_classic()+theme(text=element_text(family="sanserif",size=22))+labs(y="Warming Tolerance",x="Latitude")+scale_fill_manual(labels=c("Atlantic","Pacific"),name="Ocean", values=c('#F8766D','#00BFC4'))+scale_color_manual(labels=c("Atlantic","Pacific"),name="Ocean",values=c('#F8766D','#00BFC4'))+scale_x_continuous(name="Latitude",limits=c(30,46),breaks=c(30,34,38,42,46))+scale_shape_manual(name="Acclimation",labels = c("20°C","24°C"),values=c(21,24))+geom_segment(aes(x = 32.66052, xend = 43.08959, y = -12.7099   + 0.6279 *32.66052	, yend = -12.7099   + 0.6279 *43.08959	),size=1.5,color='#F8766D')+geom_point(size=3)
-
-#model with latitude but pac removed
-ggplot(prot1,aes(x=lat,y=wt.t,fill=oce,group=lat,color=oce,shape=acc))+theme_classic()+theme(text=element_text(family="sanserif",size=22))+labs(y="Warming Tolerance",x="Latitude")+scale_fill_manual(labels=c("Atlantic","Pacific"),name="Ocean", values=c('#F8766D','#00BFC4'))+scale_color_manual(labels=c("Atlantic","Pacific"),name="Ocean",values=c('#F8766D','#00BFC4'))+scale_x_continuous(name="Latitude",limits=c(30,46),breaks=c(30,34,38,42,46))+scale_shape_manual(name="Acclimation",labels = c("20°C","24°C"),values=c(21,24))+geom_segment(aes(x = 32.66052, xend = 43.08959, y = -8.9591   + 0.5440  *32.66052	, yend = -8.9591   + 0.5440  *43.08959	),size=1.5,color='#F8766D')+geom_point(size=3)
 
 prot1atl<-filter(prot1,oce!="p")
 
-warmt<-list(
-"a"<-glm(wt.t~lat,prot1atl,family="gaussian"),
-"b"<-glm(wt.t~mean.sst,prot1atl,family="gaussian"),
-"c"<-glm(wt.t~s.mean.sst,prot1atl,family="gaussian"),
-"d"<-glm(wt.t~q.mean.sst,prot1atl,family="gaussian"),
-"e"<-glm(wt.t~t.mean.sst,prot1atl,family="gaussian"),
-"f"<-glm(wt.t~lat+acc,prot1atl,family="gaussian"),
-"g"<-glm(wt.t~mean.sst+acc,prot1atl,family="gaussian"),
-"h"<-glm(wt.t~s.mean.sst+acc,prot1atl,family="gaussian"),
-"i"<-glm(wt.t~q.mean.sst+acc,prot1atl,family="gaussian"),
-"j"<-glm(wt.t~t.mean.sst+acc,prot1atl,family="gaussian"),
-"k"<-glm(wt.t~acc,prot1atl,family="gaussian"),
-"l"<-glm(wt.t~lat*acc,prot1atl,family="gaussian"),
-"m"<-glm(wt.t~mean.sst*acc,prot1atl,family="gaussian"),
-"n"<-glm(wt.t~s.mean.sst*acc,prot1atl,family="gaussian"),
-"o"<-glm(wt.t~q.mean.sst*acc,prot1atl,family="gaussian"),
-"p"<-glm(wt.t~t.mean.sst*acc,prot1atl,family="gaussian"))
 
-warmt.1<-list(
-"a.1"<-glm(wt.t~lat,prot1,family="gaussian"),
-"b.1"<-glm(wt.t~mean.sst,prot1,family="gaussian"),
-"c.1"<-glm(wt.t~s.mean.sst,prot1,family="gaussian"),
-"d.1"<-glm(wt.t~q.mean.sst,prot1,family="gaussian"),
-"e.1"<-glm(wt.t~t.mean.sst,prot1,family="gaussian"),
-"f.1"<-glm(wt.t~lat+acc,prot1,family="gaussian"),
-"g.1"<-glm(wt.t~mean.sst+acc,prot1,family="gaussian"),
-"h.1"<-glm(wt.t~s.mean.sst+acc,prot1,family="gaussian"),
-"i.1"<-glm(wt.t~q.mean.sst+acc,prot1,family="gaussian"),
-"j.1"<-glm(wt.t~t.mean.sst+acc,prot1,family="gaussian"),
-"k.1"<-glm(wt.t~acc,prot1,family="gaussian"),
-"l.1"<-glm(wt.t~lat*acc,prot1,family="gaussian"),
-"m.1"<-glm(wt.t~mean.sst*acc,prot1,family="gaussian"),
-"n.1"<-glm(wt.t~s.mean.sst*acc,prot1,family="gaussian"),
-"o.1"<-glm(wt.t~q.mean.sst*acc,prot1,family="gaussian"),
-"p.1"<-glm(wt.t~t.mean.sst*acc,prot1,family="gaussian"),
-"a.2"<-glm(wt.t~lat+oce,prot1,family="gaussian"),
-"b.2"<-glm(wt.t~mean.sst+oce,prot1,family="gaussian"),
-"c.2"<-glm(wt.t~s.mean.sst+oce,prot1,family="gaussian"),
-"d.2"<-glm(wt.t~q.mean.sst+oce,prot1,family="gaussian"),
-"e.2"<-glm(wt.t~t.mean.sst+oce,prot1,family="gaussian"),
-"f.2"<-glm(wt.t~lat+acc+oce,prot1,family="gaussian"),
-"g.2"<-glm(wt.t~mean.sst+acc+oce,prot1,family="gaussian"),
-"h.2"<-glm(wt.t~s.mean.sst+acc+oce,prot1,family="gaussian"),
-"i.2"<-glm(wt.t~q.mean.sst+acc+oce,prot1,family="gaussian"),
-"j.2"<-glm(wt.t~t.mean.sst+acc+oce,prot1,family="gaussian"),
-"k.2"<-glm(wt.t~acc+oce,prot1,family="gaussian"),
-"l.2"<-glm(wt.t~lat*acc*oce,prot1,family="gaussian"),
-"m.2"<-glm(wt.t~mean.sst*acc*oce,prot1,family="gaussian"),
-"n.2"<-glm(wt.t~s.mean.sst*acc*oce,prot1,family="gaussian"),
-"o.2"<-glm(wt.t~q.mean.sst*acc*oce,prot1,family="gaussian"),
-"p.2"<-glm(wt.t~t.mean.sst*acc*oce,prot1,family="gaussian"),
-"q.2"<-glm(wt.t~max,prot1,family="gaussian"),
-"r.2"<-glm(wt.t~max+acc,prot1,family="gaussian"),
-"s.2"<-glm(wt.t~max*acc,prot1,family="gaussian"),
-"t.2"<-glm(wt.t~max+acc+oce,prot1,family="gaussian"),
-"u.2"<-glm(wt.t~max*acc*oce,prot1,family="gaussian"))
-
-aictab(warmt.1)
-summary(j)
-summary(f)
-summary(model.avg(j.1,p.1))
-summary(model.avg(a,f))
-car::vif(j)
-
-summary(lm(wt.t~t.mean.sst*acc,prot1atl))
-
-aictab(warmt.1)
-
-summary(j.1)
-summary(p.1)
-r.squaredGLMM(j)
 
 ##Warming tolerance using Max as Thab
 warm.max<-list(
@@ -989,74 +813,3 @@ ggplot(prot1,aes(x=max,y=wt.max,fill=acc,group=lat,shape=oce,color=acc))+theme_c
 
 ```
 
-### Last Surviving Temeperature metric
-
-In the committee meeting of 12/9/2019, it was suggested that using the last surviving temperature (LST) might clean up the data slightly while maintaing the observed pattern. I manually extracted LSTs for each trial. My goal is to see what results might look like, and if they are any better then the LT50s.
-
-```{r,include=F}
-setwd("C:/Users/drewv/Documents/UMASS/data")
-lst<-read.csv("lst.csv")
-lst<-filter(lst,include.!="n")
-lst<-filter(lst,protocol!="3")
-lst<-filter(lst,lst>35)
-lst$acc<-as.factor(lst$acc)
-
-lst$lat<-ifelse(lst$site=="BF",34.819,ifelse(lst$site=="FB",32.660525,ifelse(lst$site=="GB",43.089589,ifelse(lst$site=="HM",40.849448,ifelse(lst$site=="OY",37.288562,ifelse(lst$site=="TO",38.12805,ifelse(lst$site=="WH",41.57687,NA)))))))
-
-lst$mean.sst<-ifelse(lst$site=="BF",means[6,1], ifelse(lst$site=="OY",means[7,1],ifelse(lst$site=="WH",means[8,1],ifelse(lst$site=="GB",means[9,1],ifelse(lst$site=="TO",means[1,1],ifelse(lst$site=="HM",means[2,1],ifelse(lst$site=="WP",means[3,1],ifelse(lst$site=="SK",means[4,1],ifelse(lst$site=="FB",means[5,1],NA)))))))))
-
-lst$s.mean.sst<-ifelse(lst$site=="BF",s.mean[6,1], ifelse(lst$site=="OY",s.mean[7,1],ifelse(lst$site=="WH",s.mean[8,1],ifelse(lst$site=="GB",s.mean[9,1],ifelse(lst$site=="TO",s.mean[1,1],ifelse(lst$site=="HM",s.mean[2,1],ifelse(lst$site=="WP",s.mean[3,1],ifelse(lst$site=="SK",s.mean[4,1],ifelse(lst$site=="FB",s.mean[5,1],NA)))))))))
-
-##UPPER QUARTILE SUMMER MEAN SST
-
-
-lst$q.mean.sst<-ifelse(lst$site=="BF",q[4,2], ifelse(lst$site=="OY",q[3,2],ifelse(lst$site=="WH",q[2,2],ifelse(lst$site=="GB",q[1,2],ifelse(lst$site=="TO",q[9,2],ifelse(lst$site=="HM",q[8,2],ifelse(lst$site=="WP",q[7,2],ifelse(lst$site=="SK",q[6,2],ifelse(lst$site=="FB",q[5,2],NA)))))))))
-
-##UPPER 90th PERCENTILE SUMMER MEAN SST
-
-
-lst$t.mean.sst<-ifelse(lst$site=="BF",q[4,3], ifelse(lst$site=="OY",q[3,3],ifelse(lst$site=="WH",q[2,3],ifelse(lst$site=="GB",q[1,3],ifelse(lst$site=="TO",q[9,3],ifelse(lst$site=="HM",q[8,3],ifelse(lst$site=="WP",q[7,3],ifelse(lst$site=="SK",q[6,3],ifelse(lst$site=="FB",q[5,3],NA)))))))))
-
-lst$oce<-ifelse(lst$site=="GB","a",ifelse(lst$site=="WH","a",ifelse(lst$site=="OY","a",ifelse(lst$site=="BF","a",ifelse(lst$site=="FB","a",ifelse(lst$site=="SK","a",ifelse(lst$site=="TO","p",ifelse(lst$site=="HM","p",NA))))))))
-
-```
-
-```{r,include=T}
-ggplot(lst,aes(x=mean.sst,y=lst, group=interaction(lat),color=site))+geom_point()+facet_wrap(acc~protocol)+geom_smooth(se=F,method="lm",aes(group=1))+xlab("meansst")
-
-prot1.2<-filter(lst,protocol==1)
-
-ggplot(prot1.2,aes(x=mean.sst,y=lst,group=acc,color=acc))+geom_point()
-
-mods2<-list(
-"null"=glm(lst~1,prot1.2,family="gaussian"),
-"lat"=glm(lst~lat,prot1.2,family="gaussian"),#latitude
-"mean"=glm(lst~mean.sst,prot1.2,family="gaussian"),#mean yearly sst
-"s.mean"=glm(lst~s.mean.sst,prot1.2,family="gaussian"),#mean summer sst (06/01 - 09/01)
-"q.mean"=glm(lst~q.mean.sst,prot1.2,family="gaussian"),#upper 25% quartile of summer mean sst
-"t.mean"=glm(lst~t.mean.sst,prot1.2,family="gaussian"),#upper 10th percentile of summer mean sst
-"acc"=glm(lst~acc,prot1.2,family="gaussian"),
-"lat.acc"=glm(lst~lat+acc,prot1.2,family="gaussian"),
-"mean.acc"=glm(lst~mean.sst+acc,prot1.2,family="gaussian"),
-"s.mean.acc"=glm(lst~s.mean.sst,prot1.2,family="gaussian"),
-"q.mean.acc"=glm(lst~q.mean.sst+acc,prot1.2,family="gaussian"),
-"t.mean.acc"=glm(lst~t.mean.sst+acc,prot1.2,family="gaussian"),
-"lat*acc"=glm(lst~lat*acc,prot1.2,family="gaussian"),
-"mean*acc"=glm(lst~mean.sst*acc,prot1.2,family="gaussian"),
-"s.mean*acc"=glm(lst~s.mean.sst*acc,prot1.2,family="gaussian"),
-"q.mean*acc"=glm(lst~q.mean.sst*acc,prot1.2,family="gaussian"),
-"t.mean*acc"=glm(lst~t.mean.sst*acc,prot1.2,family="gaussian"))
-
-aictab(mods)
-
-lstmod<-glm(lst~t.mean.sst+acc,prot1.2,family="gaussian")
-summary(lstmod)
-
-make_model2<-function(prot1.2) {lm(lst ~ t.mean.sst,prot1.2)}
-
-models1.1<-dlply(prot1.2,"acc",.fun=make_model2)
-predvals.acc.2<-ldply(models1.1,.fun=predictvals,xvar="t.mean.sst",yvar="lst")
-
-ggplot(prot1.2,aes(x=t.mean.sst,y=lst,color=acc,shape=acc))+geom_point(size=2)+geom_line(data=predvals.acc.2)+theme_classic()+scale_color_manual(labels=c("20","24"),name="Acclimation",values=c("blue","red"))+theme_classic()+scale_shape_manual(labels=c("20","24"),name="Acclimation",values=c(16,17))+xlab("Habitat Temperature (SST °C; 90th percentile summer months")
-```
-So this appears to remove the trend seen in acclimation 20C, as well as in 24C.
