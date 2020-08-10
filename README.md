@@ -1,2 +1,2 @@
 # Uro
-This is the R project containing the data and scripts for chapter 1 of my thesis. These two scripts independetly run the environmental habitat temperature extractions and perform thermal tolerance and warming tolerance calculations in one script, with developmental traits in the other. 
+This is the R project containing the data and scripts for chapter 1 of my thesis. These two scripts independetly run the environmental habitat temperature extractions and perform thermal tolerance and warming tolerance calculations in one script, with developmental traits in the other.  

@@ -1,10 +1,10 @@
 ---
-title: "QSG 11/18"
+title: "Development Metrics"
 author: "Andrew Villeneuve"
-date: "11/13/2019"
+date: "08/10/2020"
 output: word_document
 ---
-```{r setup, include=FALSE}
+```{r setup, include=FALSE,warning=F}
 knitr::opts_chunk$set(echo = TRUE)
 library(knitr)
 library(rmarkdown)
@@ -20,7 +20,17 @@ library(AER)
 library(car)
 library(glmmTMB)
 library(boot)
- 
+library(MuMIn)
+library(PerformanceAnalytics)
+library(scales)
+library(glmmTMB)
+library(betareg)
+library(MASS)
+library(gridExtra)
+
+
+
+#function used for creating prediction dataframe to then plot best fit lines
 predictvals <- function(model, xvar, yvar, xrange=NULL, samples=100, ...) {
 
   # If xrange isn't passed in, determine xrange from the models.
@@ -48,8 +58,7 @@ overdisp_fun <- function(model) {
     c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
 }
 
-setwd("C:/Users/drewv/Documents/UMASS/data")
-data<-read.csv("hatch.dev.csv")
+data<-read.csv(here::here("data/hatch.dev.csv"))
 str(data)
 
 data$acc<-as.factor(data$acc)
@@ -87,9 +96,9 @@ data<-data[-c(81),]
 data$survivor <- (data$no.hatch / data$no.embryos)
 data<-na.omit(data)
 data$no.dead<-(data$no.embryos-data$no.hatch)
-emb<-read.csv('embryos.l.csv')
+emb<-read.csv(here::here('data/embryos.l.csv'))
 data<-merge(emb,data,by="eggID")
-mom.size<-read.csv("momsize.csv")
+mom.size<-read.csv(here::here("data/momsize.csv"))
 data.moms<-merge(mom.size,data,by="momID")
 
 summary(data)
@@ -99,6 +108,19 @@ summary(data)
 ### The Study
 
 Eggs laid by broodstock *Urosalpinx cinerea* from two Pacific sites and five Atlantic sites were collected and separated by population in individual tea strainers in two acclimation temperatures, 20° and 24°C. We reared these snails for use in the $CT_{max}$ experiment, but we were able to also gain valuable information on the embryo clutch/egg capsule, hatch time, and survival for each population. 
+
+## Number of Embryos
+
+After being laid and we had labeled individual egg cases in tea strainers, each egg case was photographed at least three times during development using a Leica digital microscope. From these photographs, we were able to establish the starting number of embryos in each capsule. The multiple photos allowed us to account embryos that may have been hidden in other photos. We did not count nurse embryos. 
+
+## Hatching time
+
+We checked adult broodstock every day for evidence of egg capsule laying. When capsules were identified, ideally with the mother still laying eggs, we removed each egg capsule, marked the mother, and noted the date of laying. Once the egg capsules were distributed into their separate tea strainers in respective acclimations, we checked daily for hatching. On the day of hatch, we marked the date. We counted an egg as hatched once the first juvenile crawled out of the top of the egg capsule, thus allowing for the free exchange of water inside the capsule and the ability for all juveniles to crawl out. 
+
+## Survivorship
+
+Once juveniles hatched from their capsules, we counted the number of juveniles that successfully developed into juvenile snails. To calcualte survivorship, we divided the number of initial embryos by the number of successfully developed juveniles. 
+
 
 ## Metadata
 
@@ -127,11 +149,11 @@ The maxmum number of embryos counted in each egg capsule. This number sometimes 
 
 # lay.date
 
-Date egg capsules were first observed within broodstock tanks
+Date egg capsules were first observed within broodstock tanks (m/dd/yyyy)
 
 # date.hatched
 
-Date at which the first snail was observed having emerged from the egg capsule OR date at which the egg capsule operculum was observed to be open, allowing seawater to enter the egg capsule freely. 
+Date at which the first snail was observed having emerged from the egg capsule OR date at which the egg capsule operculum was observed to be open, allowing seawater to enter the egg capsule freely. (m/dd/yyyy)
 
 # no.hatch
 
@@ -139,7 +161,7 @@ Number of hatchling snails observed on date.hatched that were alive. Dead embryo
 
 # Time.to.hatch
 
-Developmental time, calculated as the difference between lay.date and date.hatched
+Developmental time, calculated as the difference between lay.date and date.hatched. Measured in days
 
 # survivor
 
@@ -151,48 +173,51 @@ Number of unsuccessful embryos per egg capsule, calculated as no.embryos - no.ha
 
 # mean
 
-Mean SST for each site
+Mean SST for each site (degrees celsius)
 
 # s.mean
 
-Summer mean SST for each site, calculated as the range in values between 06/01 and 09/30.
+Summer mean SST for each site, calculated as the range in values between 06/01 and 09/30. (degrees celsius)
 
 # q.mean
 
-Upper Quartile summer mean for each site, calcualted as the upper 75th percentile of temperature observations over the summer (between 06/01 and 09/30)
+Upper Quartile summer mean for each site, calculated as the upper 75th percentile of temperature observations over the summer (between 06/01 and 09/30). (degrees celsius)
 
 # t.mean
 
-Upper 90th percentile summer mean for each site, calculated over the summer (between 06/01 and 09/30)
+Upper 90th percentile summer mean for each site, calculated over the summer (between 06/01 and 09/30). (degrees celsius)
 
-```{r, include=F}
-setwd('C:/Users/drewv/Documents/UMASS/SSTdata/rawAtlantic/atl')
-library(scales)
+# max
 
-gbj<-read.csv('gbj.csv',header=T)
+Maximum temperature for each site (degrees)
+
+```{r, include=F,warning=F}
+
+gbj<-read.csv(here::here('data/environmental_data/rawAtlantic/atl/gbj.csv'))
 gbj$rdate<-as.POSIXct(gbj$DateTimeStamp,tz="","%m/%d/%Y%H:%M")
-wh<-read.csv('wh.csv',header=T)
+gbj$oce<-"a"
+wh<-read.csv(here::here('data/environmental_data/rawAtlantic/atl/wh.csv'))
 wh$rdate<-as.POSIXct(wh$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")
-oy<-read.csv('oy.csv',header=T)
+wh$oce<-"a"
+oy<-read.csv(here::here('data/environmental_data/rawAtlantic/atl/oy.csv'))
 oy$rdate<-as.POSIXct(oy$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")
-bf<-read.csv('bf.csv',header=T)
+oy$oce<-"a"
+bf<-read.csv(here::here('data/environmental_data/rawAtlantic/atl/bf.csv'))
 bf$rdate<-as.POSIXct(bf$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")
-fb<-read.csv('fb.csv',header=T)
+bf$oce<-"a"
+fb<-read.csv(here::here('data/environmental_data/rawAtlantic/atl/fb.csv'))
 fb$rdate<-as.POSIXct(fb$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")
-dm<-read.csv('dm.csv',header=TRUE)
-dm$rdate<-as.POSIXct(dm$DateTimeStamp,tz="","%m/%d/%Y")
-gcsk<-read.csv('gcsk.csv',header=TRUE)
-gcsk$rdate<-as.POSIXct(gcsk$DateTimeStamp,tz="","%m/%d/%Y%H:%M")
-atll<-rbind(gcsk,gbj,bf,oy,wh,fb)
-setwd('C:/Users/drewv/Documents/UMASS/SSTdata/rawPacific/pac')
-nah1516<-read.csv('nahcotta_2015_2016.csv',header=T)#2015 through August, 2016 data after that
-nah1516$rdate<-as.POSIXct(nah1516$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")
-hmi2<-read.csv('hmi2.csv',header=T)
-hmi2$rdate<-as.POSIXct(hmi2$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")#Indian island 2015
-to3<-read.csv('to3.csv',header=TRUE)
-to3$rdate<-as.POSIXct(to3$DateTimeStamp,tz="","%m/%d/%Y%H:%M")##stitched 2014 and 2015 (post Nove. 21 data together)
+fb$oce<-"a"
+atll<-rbind(fb,bf,oy,wh,gbj)
 
-pac2<-rbind(nah1516,to3,hmi2)
+to3<-read.csv(here::here('data/environmental_data/rawPacific/pac/to3.csv'))
+to3$rdate<-as.POSIXct(to3$DateTimeStamp,tz="","%m/%d/%Y%H:%M")
+to3$oce<-"p"
+hmi2<-read.csv(here::here('data/environmental_data/rawPacific/pac/hmi2.csv'))
+hmi2$rdate<-as.POSIXct(hmi2$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")
+hmi2$oce<-"p"
+
+pac2<-rbind(to3,hmi2)
 temp<-rbind(pac2,atll)
 means<-data.frame(with(temp,tapply(WTMP,site,mean)))
 
@@ -201,42 +226,44 @@ s.wh<-filter(wh,rdate>"2018-06-01 00:00:00" & rdate< "2018-09-30 00:00:00")
 s.oy<-filter(oy,rdate>"2018-06-01 00:00:00" & rdate< "2018-09-30 00:00:00")
 s.bf<-filter(bf,rdate>"2018-06-01 00:00:00" & rdate< "2018-09-30 00:00:00")
 s.fb<-filter(fb,rdate>"2018-06-01 00:00:00" & rdate< "2018-09-30 00:00:00")
-s.gcsk<-filter(gcsk,rdate>"2018-06-01 00:00:00" & rdate< "2018-09-30 00:00:00")
 s.to3<-filter(to3,rdate>"2018-06-01 00:00:00" & rdate< "2018-09-30 00:00:00")
 s.hmi2<-filter(hmi2,rdate>"2018-06-01 00:00:00" & rdate< "2018-09-30 00:00:00")
-s.nah1516<-filter(nah1516,rdate>"2018-06-01 00:00:00" & rdate< "2018-09-30 00:00:00")
 
 ##Quartiles
-q<-data.frame("site" = c("gbj","wh","oy","bf","fb","gcsk","nah1516","hmi2","to3"),"quantile"=NA,"decile"=NA)
+q<-data.frame("site" = c("gbj","wh","oy","bf","fb","hmi2","to3"),"quantile"=NA,"decile"=NA, "max"=NA)
 q[1,2]<-quantile(s.gbj$WTMP,0.75,type=1)
 q[2,2]<-quantile(s.wh$WTMP,0.75,type=1)
 q[3,2]<-quantile(s.oy$WTMP,0.75,type=1)
 q[4,2]<-quantile(s.bf$WTMP,0.75,type=1)
 q[5,2]<-quantile(s.fb$WTMP,0.75,type=1)
-q[6,2]<-quantile(s.gcsk$WTMP,0.75,type=1)
-q[7,2]<-quantile(s.nah1516$WTMP,0.75,type=1)
-q[8,2]<-quantile(s.hmi2$WTMP,0.75,type=1)
-q[9,2]<-quantile(s.to3$WTMP,0.75,type=1)
+q[6,2]<-quantile(s.hmi2$WTMP,0.75,type=1)
+q[7,2]<-quantile(s.to3$WTMP,0.75,type=1)
 
 q[1,3]<-quantile(s.gbj$WTMP,0.9,type=1)
 q[2,3]<-quantile(s.wh$WTMP,0.9,type=1)
 q[3,3]<-quantile(s.oy$WTMP,0.9,type=1)
 q[4,3]<-quantile(s.bf$WTMP,0.9,type=1)
 q[5,3]<-quantile(s.fb$WTMP,0.9,type=1)
-q[6,3]<-quantile(s.gcsk$WTMP,0.9,type=1)
-q[7,3]<-quantile(s.nah1516$WTMP,0.9,type=1)
-q[8,3]<-quantile(s.hmi2$WTMP,0.9,type=1)
-q[9,3]<-quantile(s.to3$WTMP,0.9,type=1)
+q[6,3]<-quantile(s.hmi2$WTMP,0.9,type=1)
+q[7,3]<-quantile(s.to3$WTMP,0.9,type=1)
 
 q[1,4]<-s.gbj %>% group_by(WTMP) %>% summarise(Value = max(WTMP))
 q[2,4]<-s.wh %>% group_by(WTMP) %>% summarise(Value = max(WTMP))
 q[3,4]<-s.oy %>% group_by(WTMP) %>% summarise(Value = max(WTMP))
 q[4,4]<-s.bf %>% group_by(WTMP) %>% summarise(Value = max(WTMP))
 q[5,4]<-s.fb %>% group_by(WTMP) %>% summarise(Value = max(WTMP))
-q[6,4]<-s.gcsk %>% group_by(WTMP) %>% summarise(Value = max(WTMP))
-q[7,4]<-s.nah1516 %>% group_by(WTMP) %>% summarise(Value = max(WTMP))
-q[8,4]<-s.hmi2 %>% group_by(WTMP) %>% summarise(Value = max(WTMP))
-q[9,4]<-s.to3 %>% group_by(WTMP) %>% summarise(Value = max(WTMP))
+q[6,4]<-s.hmi2 %>% group_by(WTMP) %>% summarise(Value = max(WTMP))
+q[7,4]<-s.to3 %>% group_by(WTMP) %>% summarise(Value = max(WTMP))
+
+
+#MEAN SST
+temp<-rbind(pac2,atll) #temperature data for all
+
+means<-data.frame(with(temp,tapply(WTMP,site,mean)))
+
+temp$means<-ifelse(temp$site=="bf",means[1,1], ifelse(temp$site=="oy",means[5,1],ifelse(temp$site=="wh",means[7,1],ifelse(temp$site=="gbj",means[3,1],ifelse(temp$site=="to3",means[6,1],ifelse(temp$site=="hmi2",means[4,1],ifelse(temp$site=="fb",means[2,1],NA))))))) #stitching temperature data to sites
+
+temp$site_ID<-ifelse(temp$site=="bf","BF", ifelse(temp$site=="oy","OY",ifelse(temp$site=="wh","WH",ifelse(temp$site=="gbj","GB",ifelse(temp$site=="to3","TO",ifelse(temp$site=="hmi2","HM",ifelse(temp$site=="fb","FB",NA))))))) 
 
 
 ##SUMMER MEAN SST
@@ -247,15 +274,15 @@ s.mean<-data.frame(with(summer.temp,tapply(WTMP,site,mean)))
 
 
 
-data$mean<-ifelse(data$site=="BF",means[6,1], ifelse(data$site=="OY",means[7,1],ifelse(data$site=="WH",means[8,1],ifelse(data$site=="GB",means[5,1],ifelse(data$site=="TO",means[2,1],ifelse(data$site=="HM",means[3,1],ifelse(data$site=="WP",means[1,1],ifelse(data$site=="SK",means[4,1],ifelse(data$site=="FB",means[9,1],NA))))))))) #stitching means sst data to sites
+data$mean<-ifelse(data$site=="BF",means[1,1], ifelse(data$site=="OY",means[5,1],ifelse(data$site=="WH",means[7,1],ifelse(data$site=="GB",means[3,1],ifelse(data$site=="TO",means[6,1],ifelse(data$site=="HM",means[4,1],ifelse(data$site=="FB",means[2,1],NA))))))) #stitching means sst data to sites
 
-data$s.mean<-ifelse(data$site=="BF",s.mean[6,1], ifelse(data$site=="OY",s.mean[7,1],ifelse(data$site=="WH",s.mean[8,1],ifelse(data$site=="GB",s.mean[5,1],ifelse(data$site=="TO",s.mean[2,1],ifelse(data$site=="HM",s.mean[3,1],ifelse(data$site=="WP",s.mean[1,1],ifelse(data$site=="SK",s.mean[4,1],ifelse(data$site=="FB",s.mean[9,1],NA))))))))) #stitching summer mean to stes
+data$s.mean<-ifelse(data$site=="BF",s.mean[1,1], ifelse(data$site=="OY",s.mean[5,1],ifelse(data$site=="WH",s.mean[7,1],ifelse(data$site=="GB",s.mean[3,1],ifelse(data$site=="TO",s.mean[6,1],ifelse(data$site=="HM",s.mean[4,1],ifelse(data$site=="FB",s.mean[2,1],NA))))))) #stitching summer mean to stes
 
-data$q.mean<-ifelse(data$site=="BF",q[4,2], ifelse(data$site=="OY",q[3,2],ifelse(data$site=="WH",q[2,2],ifelse(data$site=="GB",q[1,2],ifelse(data$site=="TO",q[9,2],ifelse(data$site=="HM",q[8,2],ifelse(data$site=="WP",q[7,2],ifelse(data$site=="SK",q[6,2],ifelse(data$site=="FB",q[5,2],NA))))))))) #stitching summer mean to stes
+data$q.mean<-ifelse(data$site=="BF",q[4,2], ifelse(data$site=="OY",q[3,2],ifelse(data$site=="WH",q[2,2],ifelse(data$site=="GB",q[1,2],ifelse(data$site=="TO",q[7,2],ifelse(data$site=="HM",q[6,2],ifelse(data$site=="FB",q[5,2],NA))))))) #stitching summer mean to stes
 
-data$t.mean<-ifelse(data$site=="BF",q[4,3], ifelse(data$site=="OY",q[3,3],ifelse(data$site=="WH",q[2,3],ifelse(data$site=="GB",q[1,3],ifelse(data$site=="TO",q[9,3],ifelse(data$site=="HM",q[8,3],ifelse(data$site=="WP",q[7,3],ifelse(data$site=="SK",q[6,3],ifelse(data$site=="FB",q[5,3],NA))))))))) #stitching summer mean to stes
+data$t.mean<-ifelse(data$site=="BF",q[4,3], ifelse(data$site=="OY",q[3,3],ifelse(data$site=="WH",q[2,3],ifelse(data$site=="GB",q[1,3],ifelse(data$site=="TO",q[7,3],ifelse(data$site=="HM",q[6,3],ifelse(data$site=="FB",q[5,3],NA))))))) #stitching summer mean to stes
 
-data$max<-ifelse(data$site=="BF",q[4,4], ifelse(data$site=="OY",q[3,4],ifelse(data$site=="WH",q[2,4],ifelse(data$site=="GB",q[1,4],ifelse(data$site=="TO",q[9,4],ifelse(data$site=="HM",q[8,4],ifelse(data$site=="WP",q[7,4],ifelse(data$site=="SK",q[6,4],ifelse(data$site=="FB",q[5,4],NA)))))))))
+data$max<-ifelse(data$site=="BF",q[4,4], ifelse(data$site=="OY",q[3,4],ifelse(data$site=="WH",q[2,4],ifelse(data$site=="GB",q[1,4],ifelse(data$site=="TO",q[7,4],ifelse(data$site=="HM",q[6,4],ifelse(data$site=="FB",q[5,4],NA)))))))
 
 ##counts by site and acclimation 
 counts<-ddply(data,.(data$site,data$acc),nrow)
@@ -269,13 +296,18 @@ names(counts)<-c("Site","Acclimation","N","Mean")
 
 ## Testing for collinearity
 
-It appears that survival and Time to hatching are correlated, and so should not be included in models.
-```{r}
-library(PerformanceAnalytics)
+It appears that survival and Time to hatching are correlated, and so should not be included together in models.
+```{r,echo=F,warning=F}
 data[,c(3,8,12,14)]->a
 a<-na.omit(a)
 c<-cor(a)
 chart.Correlation(c)
+```
+
+Does mom weight or mom length correlate with number of embryos? They do not appear to, but We will include moms in mixed effect models
+
+```{r,echo=F,warning=F}
+
 
 ggplot(data.moms,aes(x=no.embryos,y=mom.wt))+geom_point()
 a<-lm(no.embryos~mom.wt,data.moms)
@@ -284,73 +316,44 @@ summary(a)
 ggplot(data.moms,aes(x=site,y=mom.l))+geom_point()
 ```
 
-## Number of Embryos
+## Number of Embryos analysis
 
-```{r}
+```{r,echo=F,warning=F}
 
 data$no.embryos<-as.integer(data$no.embryos)
 data$momID<-as.factor(data$momID)
+
+#scaling and centering our variables
 
  data2<-data.frame("lat"=scale(data$lat,center=T,scale=T),"mean"=scale(data$mean,center=T,scale=T),"s.mean"=scale(data$s.mean,center=T,
     scale=T),"t.mean"=scale(data$t.mean,center=T,scale=T),"q.mean"=scale(data$q.mean,center=T,scale=T),no.embryos=data$no.embryos,momID=
     data$momID,acc=data$acc)
     data2$site<-data$site
-# 
-# noe<-list(
-#   "null"=glm(no.embryos ~ 1, data=data,family=poisson),
-#   "lat"=glm(no.embryos ~ lat,data=data,family=poisson),
-#   "mean"=glm(no.embryos ~ mean,data=data,family=poisson),
-#   "s.mean"=glm(no.embryos ~ s.mean,data=data,family=poisson),
-#   "q.mean"=glm(no.embryos ~ q.mean,data=data,family=poisson),
-#   "t.mean"=glm(no.embryos ~ t.mean,data=data,family=poisson))
-#   noe2<-list(
-#   "null.m"<-glmmTMB(no.embryos ~ 1+(1|site/momID), data=data2,family=nbinom2),
-#   "lat.m"=glmmTMB(no.embryos ~ lat+(1|site/momID),data=data2,family=nbinom2),
-#   "mean.m"=glmmTMB(no.embryos ~ mean+(1|site/momID),data=data2,family=nbinom2),
-#   "s.mean.m"=glmmTMB(no.embryos ~ s.mean+(1|site/momID),data=data2,family=nbinom2),
-#   "q.mean.m"=glmmTMB(no.embryos ~ q.mean+(1|site/momID),data=data2,family=nbinom2),
-#   "t.mean.m"=glmmTMB(no.embryos ~ t.mean+(1|site/momID),data=data2,family=nbinom2))
-#   
-#  
-#   
-#   a<-glmmTMB(no.embryos ~ (1|site/momID), data=data2,family=nbinom2)
-#   b<-glmmTMB(no.embryos ~ lat+(1|site/momID),data=data2,family=nbinom2)
-#   c<-glmmTMB(no.embryos ~ mean+(1|site/momID),data=data2,family=nbinom2)
-#   d<-glmmTMB(no.embryos ~ s.mean+(1|site/momID),data=data2,family=nbinom2)
-#   e<-glmmTMB(no.embryos ~ q.mean+(1|site/momID),data=data2,family=nbinom2)
-#   f<-glmmTMB(no.embryos ~ t.mean+(1|site/momID),data=data2,family=nbinom2)
-#   
-#   #new models with brian
-#   
-# 
-#   
-#   b2<-glmmTMB(no.embryos ~ lat+(1|momID),data=data2,family=nbinom1,ziformula=~0)
-#   b3<-glmmTMB(no.embryos ~ lat+(1|momID),data=data2,family=poisson)
-#   b2.a<-glmmTMB(no.embryos ~ lat+(1|momID),data=data2,family=nbinom1,ziformula=~0)
-#   b4<-glmmTMB(no.embryos ~ lat+(1|site/momID),data=data2,family=nbinom1,ziformula=~0)
-  
-  ##THESE WORK
-  a<-glmmTMB(no.embryos ~ 1+(1|site/momID), data=data,family=compois)
-  b<-glmmTMB(no.embryos ~ lat+(1|site/momID),data=data,family=compois)
-  c<-glmmTMB(no.embryos ~ mean+(1|site/momID),data=data,family=compois)
-  d<-glmmTMB(no.embryos ~ s.mean+(1|site/momID),data=data,family=compois)
-  e<-glmmTMB(no.embryos ~ q.mean+(1|site/momID),data=data,family=compois)
-  f<-glmmTMB(no.embryos ~ t.mean+(1|site/momID),data=data,family=compois)
-  g<-glmmTMB(no.embryos ~ lat+ocean+(1|site/momID),data=data,family=compois)
-  h<-glmmTMB(no.embryos ~ mean+ocean+(1|site/momID),data=data,family=compois)
-  i<-glmmTMB(no.embryos ~ s.mean+ocean+(1|site/momID),data=data,family=compois)
-  j<-glmmTMB(no.embryos ~ q.mean+ocean+(1|site/momID),data=data,family=compois)
-  k<-glmmTMB(no.embryos ~ t.mean+ocean+(1|site/momID),data=data,family=compois)
-  l<-glmmTMB(no.embryos ~ max+(1|site/momID),data=data,family=compois)
-  m<-glmmTMB(no.embryos ~ max+ocean+(1|site/momID),data=data,family=compois)
+
+  ##THESE WORK, but slow! 
+  a<-glmmTMB(no.embryos ~ 1+(1|momID), data=data,family=compois)
+  b<-glmmTMB(no.embryos ~ lat+(1|momID),data=data,family=compois)
+  c<-glmmTMB(no.embryos ~ mean+(1|momID),data=data,family=compois)
+  d<-glmmTMB(no.embryos ~ s.mean+(1|momID),data=data,family=compois)
+  e<-glmmTMB(no.embryos ~ q.mean+(1|momID),data=data,family=compois)
+  f<-glmmTMB(no.embryos ~ t.mean+(1|momID),data=data,family=compois)
+  g<-glmmTMB(no.embryos ~ lat+ocean+(1|momID),data=data,family=compois)
+  h<-glmmTMB(no.embryos ~ mean+ocean+(1|momID),data=data,family=compois)
+  i<-glmmTMB(no.embryos ~ s.mean+ocean+(1|momID),data=data,family=compois)
+  j<-glmmTMB(no.embryos ~ q.mean+ocean+(1|momID),data=data,family=compois)
+  k<-glmmTMB(no.embryos ~ t.mean+ocean+(1|momID),data=data,family=compois)
+  l<-glmmTMB(no.embryos ~ max+(1|momID),data=data,family=compois)
+  m<-glmmTMB(no.embryos ~ max+ocean+(1|momID),data=data,family=compois)
   
   noe<-list(a,b,c,d,e,f,g,h,i,j,k,l,m)
+  aictab(noe)
   
   model<-glm(no.embryos ~q.mean+t.mean+s.mean+mean+lat,data=data,family="poisson")
 
 1/(car::vif(model))
 
-  modeavelist<-list(a,d,e,f,l,m)
+#four models are well supported, so we will model average
+  modeavelist<-list(l,f,d,e)
   summary(model.avg(modeavelist))
   
   ##troubleshooting
@@ -358,8 +361,8 @@ data$momID<-as.factor(data$momID)
   cts<-dplyr::count(data2,momID)
   ggplot(data2,aes(x=momID,y=no.embryos))+facet_wrap(momID~.)+geom_point()
   
-aictab(noe)
-noem<-glmmTMB(no.embryos ~ t.mean+(1|site/momID),data=data,family=compois)
+#for purpose of plotting, let's use the model with best support
+noem<-glmmTMB(no.embryos ~ max+(1|momID),data=data,family=compois)
 summary(noem)
 
 
@@ -373,31 +376,24 @@ overdisp_fun(noem)
 #no overdispersion!
 
 
-r.squaredGLMM(f)
 
-
+sjstats::r2(e)
 ```
 So, the null model predicts this the best. We can say that the number of embryos does not appear to really change by home population. But, a few models were within the 2 delta AIC limit. So let's plot with one. 
 
-```{r}
-model1<-glmmTMB(no.embryos ~ t.mean,data=data,family=compois)
-xmin<-min(data$t.mean,na.rm=T)
-xmax<-max(data$t.mean,na.rm=T)
-pred.noe<-data.frame(t.mean=seq(xmin,xmax,length.out=100))
-pred.noe$no.embryos<-predict(model1,pred.noe)
-pred.noe$no.embryos<-exp(pred.noe$no.embryos)
+```{r,echo=F,warning=F}
 
 
+fig9a<-ggplot(data,aes(x=max,y=no.embryos))+theme_classic()+ylab("Number of Embryos/Egg Capsule")+theme(text=element_text(family="arial",size=18))+labs(y="Clutch Size",x=expression(atop(paste("T"[hab]," (SST °C)"))))+geom_jitter(width=0.2,height=0.2,size=3)+ geom_smooth(method="lm",color="black",se=F)+scale_x_continuous(breaks=c(22,26,30,34))
 
-fig9a<-ggplot(data,aes(x=t.mean,y=no.embryos))+theme_classic()+ylab("Number of Embryos/Egg Capsule")+xlab("Mean SST °C (90th percentile summer months)")+theme(text=element_text(family="arial",size=18))+labs(y="Clutch Size",x=expression(atop(paste("T"[hab]),"(SST °C; 90th percentile summer months)")))+geom_jitter(width=0.2,height=0.2,size=3)
 
 fig9a
 
 
 ```
 
-## Time to hatch
-```{r}
+## Time to hatch analysis
+```{r,warning=F,echo=F}
 
 
 tth<-list(
@@ -419,19 +415,7 @@ tth<-list(
   "t.mean*acc"=glmmTMB(Time.to.hatch ~ t.mean*acc+(1|momID),data,family="gaussian"),
   "max*acc"=glmmTMB(Time.to.hatch ~ max*acc+(1|momID),data,family="gaussian"),
   "max+acc"=glmmTMB(Time.to.hatch ~ max+acc+(1|momID),data,family="gaussian"),
-    "max"=glmmTMB(Time.to.hatch ~ max+(1|momID),data,family="gaussian"))
-
-  #   "lat+acc+e"=glmmTMB(Time.to.hatch ~ lat+acc+no.embryos+(1|momID),data,family="gaussian"),
-  # "mean+acc+e"=glmmTMB(Time.to.hatch ~ mean+acc+no.embryos+(1|momID),data,family="gaussian"),
-  # "s.mean+acc+e"=glmmTMB(Time.to.hatch ~ s.mean+acc+no.embryos+(1|momID),data,family="gaussian"),
-  # "q.mean+acc+e"=glmmTMB(Time.to.hatch ~ q.mean+acc+no.embryos+(1|momID),data,family="gaussian"),
-  # "t.mean+acc+e"=glmmTMB(Time.to.hatch ~ t.mean+acc+no.embryos+(1|momID),data,family="gaussian"),
-  # "lat*acc*e"=glmmTMB(Time.to.hatch ~ lat*acc*no.embryos+(1|momID),data,family="gaussian"),
-  # "mean*acc*e"=glmmTMB(Time.to.hatch ~ mean*acc*no.embryos+(1|momID),data,family="gaussian"),
-  # "s.mean*acc*e"=glmmTMB(Time.to.hatch ~ s.mean*acc*no.embryos+(1|momID),data,family="gaussian"),
-  # "q.mean*acc*e"=glmmTMB(Time.to.hatch ~ q.mean*acc*no.embryos+(1|momID),data,family="gaussian"),
-  # "t.mean*acc*e"=glmmTMB(Time.to.hatch ~ t.mean*acc*no.embryos+(1|momID),data,family="gaussian")
-
+  "max"=glmmTMB(Time.to.hatch ~ max+(1|momID),data,family="gaussian"))
 
 aictab(tth)
 
@@ -441,14 +425,15 @@ model<-glm(Time.to.hatch ~q.mean+t.mean+s.mean+mean+lat+no.embryos+survivor,data
 
 1/(car::vif(model))
 
+#two models are under AIC 2, so we will model average them for reporting. For plotting, we will use the best supported model. 
 a<-glmmTMB(Time.to.hatch ~ lat*acc+(1|momID),data,family="gaussian")
 b<-glmmTMB(Time.to.hatch ~ mean*acc+(1|momID),data,family="gaussian")
 summary(model.avg(a,b))
 
 tthm<-tth$'mean*acc'
 summary(tthm)
-0.9671/(0.9671+2.2702)
 
+#how do the residuals look
 hist(resid(tthm))
 
 r.squaredGLMM(tthm)
@@ -462,11 +447,14 @@ data %>%
   group_by(site,acc)%>%
   summarise_at(vars("Time.to.hatch"),sd)
 
-TukeyHSD((aov(Time.to.hatch~site*acc,data=data)))
-```
-Not sure what to do here. Is this multivariate? For now, let's just ignore the number of embryos as a predictor for hatching time and model. Time to hatch increases significantly with decreasing mean SST and decreases with a higher acclimation.
 
-```{r}
+#silenced post hoc comparisons
+#TukeyHSD((aov(Time.to.hatch~site*acc,data=data)))
+```
+
+Now that we have a model averaged summary of our data, we will plot one of the best fit models (mean temperature) for visualization. 
+
+```{r,warning=F,echo=F}
 make_model_tth<-function(data) {glm(Time.to.hatch ~ mean,data,family="gaussian")}
 models_tth<-dlply(data,"acc",.fun=make_model_tth)
 
@@ -481,17 +469,13 @@ ggplot(data,aes(x=mean,y=Time.to.hatch,color=acc,fill=acc,shape=ocean))+scale_co
 
 ```
 
-## Survivorship
+## Survivorship analysis
 
-```{r}
-library('glmmTMB')
-library('betareg')
-library(MASS)
+```{r,warning=F,echo=F}
+
 hist(data$survivor)
-y.transf.betareg <- function(y){
-    n.obs <- sum(!is.na(y))
-    (y * (n.obs - 1) + 0.5) / n.obs
-}
+
+
 y=cbind(data$no.hatch,data$no.dead)
 y<-na.omit(y)
 surv<-list(
@@ -515,30 +499,8 @@ surv<-list(
   "max+acc"=glmmTMB(y ~ max+acc+(1|momID),data,family=binomial),
   "max"=glmmTMB(y ~ max+(1|momID),data,family=binomial))
 
-  
- # "lat+acc+e"=glm(y ~ lat+acc+no.embryos,data,family="binomial"),
-  #"mean+acc+e"=glm(y ~ mean+acc+no.embryos,data,family="binomial"),
-#  "s.mean+acc+e"=glm(y ~ s.mean+acc+no.embryos,data,family="binomial"),
- # "q.mean+acc+e"=glm(y ~ q.mean+acc+no.embryos,data,family="binomial"),
-  #"t.mean+acc+e"=glm(y ~ t.mean+acc+no.embryos,data,family="binomial"),
-#  "lat*acc*e"=glm(y ~ lat*acc*no.embryos,data,family="binomial"),
- # "mean*acc*e"=glm(y ~ mean*acc*no.embryos,data,family="binomial"),
-#  "s.mean*acc*e"=glm(y ~ s.mean*acc*no.embryos,data,family="binomial"),
- # "q.mean*acc*e"=glm(y ~ q.mean*acc*no.embryos,data,family="binomial"),
-#  "t.mean*acc*e"=glm(y ~ t.mean*acc*no.embryos,data,family="binomial"),
- # "lat+e"=glm(y ~ lat+no.embryos,data,family="binomial"),
-#  "mean+e"=glm(y ~ mean+no.embryos,data,family="binomial"),
-#  "s.mean+e"=glm(y ~ s.mean+no.embryos,data,family="binomial"),
-#  "q.mean+e"=glm(y ~ q.mean+no.embryos,data,family="binomial"),
-#  "t.mean+e"=glm(y ~ t.mean+no.embryos,data,family="binomial"),
-#  "lat*e"=glm(y ~ lat*no.embryos,data,family="binomial"),
-#  "mean*e"=glm(y ~ mean*no.embryos,data,family="binomial"),
-#  "s.mean*e"=glm(y ~ s.mean*no.embryos,data,family="binomial"),
-#  "q.mean*e"=glm(y ~ q.mean*no.embryos,data,family="binomial"),
-#  "t.mean*e"=glm(y ~ t.mean*no.embryos,data,family="binomial"),
 
 aictab(surv)
-library(MuMIn)
 subset<-subset(aictab(surv),Delta_AICc<2)#choosing which models
 
 a<-glmmTMB(y ~ q.mean+(1|momID),data,family=binomial)
@@ -551,12 +513,13 @@ h<-glmmTMB(y ~ lat+(1|momID),data,family=binomial)
 i<-glmmTMB(y ~ max+(1|momID),data,family=binomial)
 
 
+#a bunch of top models. Time to model average
 surv.ave<-model.avg(a,b,c,d,e,g,h,i)
 summary(surv.ave)
 
+#one model performs best, so we will use this one for visualziation (upper 25th percentile)
 summary(glmmTMB(y ~ q.mean+(1|momID),data=data,family=binomial()))
 
-.3794/(.3794+0.6159 )
 
 survm<-glmmTMB(survivor ~ q.mean+(1|momID),data=data,family=binomial)
 E1<-resid(survm,type="pearson")
@@ -573,13 +536,13 @@ model<-glm(y ~q.mean+t.mean+s.mean+mean+lat+no.embryos+survivor+Time.to.hatch,da
 #not multicollinear
 1/(car::vif(model))
 
-r.squaredGLMM(i)
+r.squaredGLMM(a)
 
 ```
 
 The summer mean only is the best predictor of survivorship. I decided to ignore number of embryos and time to hatch for now. 
 
-```{r}
+```{r,warning=F,echo=F}
 #model for plotting
 data3<-na.omit(data2)
 
@@ -592,26 +555,24 @@ xmax<-max(data3$q.mean,na.rm=T)
 pred.surv<-data.frame(q.mean=seq(xmin,xmax,length.out=100))
 pred.surv$survivor<-predict(model2,pred.surv)
 
-#c0=coef(model2)[1] #model intercept 
-#c1=coef(model2)[2] #model slope 
-
-c0=-0.43225
-c1=0.0828
-
+c0<-(-0.99210)
+c1<-0.07876
+```
+```{r,warning=F,echo=F}
 q.mean<-data$q.mean
 p1=plogis(c0+c1*q.mean)
 comb<-data.frame(q.mean,p1)
 data$survivor<-data$survivor
 
-fig9b<-ggplot(data,aes(x=q.mean,y=survivor))+stat_smooth(data=comb,aes(x=q.mean,y=p1),method="glm", family=binomial, formula=y~x,color="black")+theme_classic()+theme(text=element_text(family="arial",size=18))+labs(y="Clutch Survivorship",x=expression(atop(paste("T"[hab]),"(SST °C; 75th percentile summer months)")))+geom_jitter(width=0.1,height=0.1,size=3)
+fig9b<-ggplot(data,aes(x=q.mean,y=survivor))+stat_smooth(data=comb,aes(x=q.mean,y=p1),method="glm", family=binomial, formula=y~x,color="black")+theme_classic()+theme(text=element_text(family="arial",size=18))+labs(y="Clutch Survivorship",x=expression(atop(paste("T"[hab]," (SST °C)"))))+geom_jitter(width=0.1,height=0.1,size=3)
 
 fig9b
 
-grid.arrange(fig9a,fig9b,ncol=2)
+gridExtra::grid.arrange(fig9a,fig9b,ncol=2)
 
 ```
 
-```{r,include=F}
+```{r,include=F,warning=F}
 #printing results of time to hatch
  sink("tthm.txt")
  print(summary(glmmTMB(Time.to.hatch ~ mean*acc*no.embryos+(1|momID),data,family="gaussian")))
