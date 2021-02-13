@@ -2,7 +2,9 @@
 title: "Thermal and warming tolerance analysis"
 author: "Andrew Villeneuve"
 date: "08/07/2020"
-output: word_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -38,64 +40,7 @@ lt50<- function(model,value) {
     function(x) {
       predict(model,data.frame(t5=x),type="response")-value}}
 
-# Given a model, predict values of yvar from xvar
-# This supports one predictor and one predicted variable.
-# xrange: If NULL, determine the x range from the model object. If a vector with
-#   two numbers, use those as the min and max of the prediction range.
-# samples: Number of samples across the x range.
-# ...: Further arguments to be passed to predict()
-predictvals <- function(model, xvar, yvar, xrange=NULL, samples=100, ...) {
 
-  # If xrange isn't passed in, determine xrange from the models.
-  # Different ways of extracting the x range, depending on model type
-  if (is.null(xrange)) {
-    if (any(class(model) %in% c("lm", "glm")))
-      xrange <- range(model$model[[xvar]])
-    else if (any(class(model) %in% "loess"))
-      xrange <- range(model$x)
-  }
-
-  newdata <- data.frame(x = seq(xrange[1], xrange[2], length.out = samples))
-  names(newdata) <- xvar
-  newdata[[yvar]] <- predict(model, newdata = newdata, ...)
-  newdata
-}
-
-summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
-                      conf.interval=.95, .drop=TRUE) {
-    library(plyr)
-
-    # New version of length which can handle NA's: if na.rm==T, don't count them
-    length2 <- function (x, na.rm=FALSE) {
-        if (na.rm) sum(!is.na(x))
-        else       length(x)
-    }
-
-    # This does the summary. For each group's data frame, return a vector with
-    # N, mean, and sd
-    datac <- ddply(data, groupvars, .drop=.drop,
-      .fun = function(xx, col) {
-        c(N    = length2(xx[[col]], na.rm=na.rm),
-          mean = mean   (xx[[col]], na.rm=na.rm),
-          sd   = sd     (xx[[col]], na.rm=na.rm)
-        )
-      },
-      measurevar
-    )
-
-    # Rename the "mean" column    
-    datac <- rename(datac, c("mean" = measurevar))
-
-    datac$se <- datac$sd / sqrt(datac$N)  # Calculate standard error of the mean
-
-    # Confidence interval multiplier for standard error
-    # Calculate t-statistic for confidence interval: 
-    # e.g., if conf.interval is .95, use .975 (above/below), and use df=N-1
-    ciMult <- qt(conf.interval/2 + .5, datac$N-1)
-    datac$ci <- datac$se * ciMult
-
-    return(datac)
-}
 here::here()
 data<-read.csv(here::here("data/master.copy(9.17.19).csv"))
 runs<-read.csv(here::here("data/run.count.csv"))
@@ -476,27 +421,27 @@ all.day <- all %>%
 row.has.na <- apply(bf, 1, function(x){any(is.na(x))})
 bf <- bf[!row.has.na,]
 dfX <- xts(bf$WTMP, as.Date(bf$rdate))
-bf_24<-apply.daily(dfX, max)
+bf_24<-apply.daily(dfX, base::max)
 
 row.has.na <- apply(fb, 1, function(x){any(is.na(x))})
 fb <- fb[!row.has.na,]
 dfX <- xts(fb$WTMP, as.Date(fb$rdate))
-fb_24<-apply.daily(dfX, mean)
+fb_24<-apply.daily(dfX, base::mean)
 
 row.has.na <- apply(oy, 1, function(x){any(is.na(x))})
 oy <- oy[!row.has.na,]
 dfX <- xts(oy$WTMP, as.Date(oy$rdate))
-oy_24<-as.data.frame(apply.daily(dfX, mean))
+oy_24<-as.data.frame(apply.daily(dfX, base::mean))
 
 row.has.na <- apply(wh, 1, function(x){any(is.na(x))})
 wh <- wh[!row.has.na,]
 dfX <- xts(wh$WTMP, as.Date(wh$rdate))
-wh_24<-apply.daily(dfX, mean)
+wh_24<-apply.daily(dfX, base::mean)
 
 row.has.na <- apply(gbj, 1, function(x){any(is.na(x))})
 gbj <- gbj[!row.has.na,]
 dfX <- xts(gbj$WTMP, as.Date(gbj$rdate))
-gb_24<-apply.monthly(dfX, mean)
+gb_24<-apply.monthly(dfX, base::mean)
 
 oy_24
 bf_24
@@ -529,9 +474,10 @@ We can see that the variance about the lines of best fit and the slope of the li
 # Comparing lt50s among acclimations 
 
 ```{r,echo=F,warning=F}
-c<-cor(lt50s[,c(8:11,13:16)])
+c<-cor(lt50s[,c(8:11,13:13)])
 chart.Correlation(c)
 prot1<-filter(lt50s,P=="1")
+prot1$acc<-as.factor(prot1$acc)
 mods<-list(
 "null"=lm(LT50~1,prot1),
 "lat"=lm(LT50~lat,prot1),#latitude
@@ -576,10 +522,6 @@ p<-length(coef(mod1))
 sum(E1^2) / (N-p)
 #no overdispersion
 
-
-#make models for both acclimation temperatures
-#models1<-dlply(prot1,"acc",.fun=make_model)
-#predvals.acc<-ldply(models1,.fun=predictvals,xvar="t.mean.sst",yvar="LT50")
 
 fig5<-ggplot(prot1,aes(x=max,y=LT50,color=acc,shape=oce,fill=acc))+geom_point(size=3)+theme_classic()+scale_color_manual(labels=c("20°C","24°C"),name="Acclimation",values=c("blue","red"))+theme_classic()+xlab("Habitat Temperature (SST °C")+scale_fill_manual(labels=c("20°C","24°C"),name="Acclimation",values=c("blue","red"))+scale_shape_manual(labels=c("Atlantic","Pacific"),name="Ocean",values=c(21,24))+
   theme(text=element_text(family="arial",size=22))+labs(y=expression(paste("LT"[50],  " (°C)")), x=expression(paste("T"[hab], " (SST °C)")))+scale_x_continuous(breaks=c(20,22,24,26,28,30,32,34),limits=c(20,34))+scale_y_continuous(breaks=c(35,36,37,38,39,40,41),limits=c(35,41))+  
@@ -636,7 +578,7 @@ warm.max<-list(
 "s.2"=lm(wt.max~max*acc,prot1)) 
 
 aictab(warm.max)
-summary(s.2)#best fit model
+
 summary(lm(wt.max~max*acc,prot1))
 
 ggplot(prot1,aes(x=max,y=wt.max,fill=acc,group=lat,shape=oce,color=acc))+theme_classic()+theme(text=element_text(family="sanserif",size=22))+labs(y="Warming Tolerance",x="Latitude")+scale_fill_manual(labels=c("20°C","24°C"),name="Acclimation", values=c('blue','red'))+scale_color_manual(labels=c("20°C","24°C"),name="Acclimation",values=c('blue','red'))+scale_shape_manual(name="Ocean",labels = c("Atlantic","Pacific"),values=c(21,24))+geom_segment(aes(x = 21.8, xend = 33.56934, y = 37.97841 -(0.95139 *21.8), yend = 37.97841 -(0.95139 *33.56934)	),size=1.5,color='blue')+geom_point(size=3)+scale_x_continuous(name=expression(paste("T"[hab], " (SST °C)")),limits=c(20,34),breaks=c(20,22,24,26,28,30,32,34))+
