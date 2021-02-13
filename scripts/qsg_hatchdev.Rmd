@@ -60,6 +60,8 @@ overdisp_fun <- function(model) {
 
 data<-read.csv(here::here("data/hatch.dev.csv"))
 str(data)
+#we use hatchID to account for maternal effects - mother ID was not consistently gathered
+hatchID<-read.csv(here::here("data/hatchID.csv"))
 
 data$acc<-as.factor(data$acc)
 colnames(data)[colnames(data)=="X..hatchlings"]<-"no.hatch"
@@ -100,6 +102,7 @@ emb<-read.csv(here::here('data/embryos.l.csv'))
 data<-merge(emb,data,by="eggID")
 mom.size<-read.csv(here::here("data/momsize.csv"))
 data.moms<-merge(mom.size,data,by="momID")
+data<-merge(data,hatchID,by="eggID")
 
 summary(data)
 
@@ -219,8 +222,10 @@ hmi2$oce<-"p"
 
 pac2<-rbind(to3,hmi2)
 temp<-rbind(pac2,atll)
+#mean annual temp
 means<-data.frame(with(temp,tapply(WTMP,site,mean)))
 
+#summer period
 s.gbj<-filter(gbj,rdate>"2018-06-01 00:00:00" & rdate< "2018-09-30 00:00:00")
 s.wh<-filter(wh,rdate>"2018-06-01 00:00:00" & rdate< "2018-09-30 00:00:00")
 s.oy<-filter(oy,rdate>"2018-06-01 00:00:00" & rdate< "2018-09-30 00:00:00")
@@ -284,6 +289,28 @@ data$t.mean<-ifelse(data$site=="BF",q[4,3], ifelse(data$site=="OY",q[3,3],ifelse
 
 data$max<-ifelse(data$site=="BF",q[4,4], ifelse(data$site=="OY",q[3,4],ifelse(data$site=="WH",q[2,4],ifelse(data$site=="GB",q[1,4],ifelse(data$site=="TO",q[7,4],ifelse(data$site=="HM",q[6,4],ifelse(data$site=="FB",q[5,4],NA)))))))
 
+#season length
+#egg laying mean
+lay_fb<-mean((filter(fb,rdate>"2018-03-01 00:00:00" & rdate< "2018-03-30 00:00:00"))$WTMP)
+lay_bf<-mean((filter(bf,rdate>"2018-03-15 00:00:00" & rdate< "2018-04-15 00:00:00"))$WTMP)
+lay_oy<-mean((filter(oy,rdate>"2018-05-01 00:00:00" & rdate< "2018-05-30 00:00:00"))$WTMP)
+lay_wh<-mean((filter(wh,rdate>"2018-05-15 00:00:00" & rdate< "2018-06-15 00:00:00"))$WTMP)
+lay_gb<-mean((filter(gbj,rdate>"2018-06-01 00:00:00" & rdate< "2018-06-30 00:00:00"))$WTMP)
+lay_hm<-mean((filter(hmi2,rdate>"2018-04-15 00:00:00" & rdate< "2018-05-15 00:00:00"))$WTMP)#inat
+lay_to<-mean((filter(to3,rdate>"2018-04-15 00:00:00" & rdate< "2018-05-15 00:00:00"))$WTMP)#ruesink
+#max
+lay_fb2<-mean((filter(fb,rdate>"2018-03-01 00:00:00" & rdate< "2018-05-30 00:00:00"))$WTMP)
+lay_bf2<-mean((filter(bf,rdate>"2018-03-15 00:00:00" & rdate< "2018-05-30 00:00:00"))$WTMP)
+lay_oy2<-mean((filter(oy,rdate>"2018-05-01 00:00:00" & rdate< "2018-07-30 00:00:00"))$WTMP)
+lay_wh2<-mean((filter(wh,rdate>"2018-07-01 00:00:00" & rdate< "2018-08-31 00:00:00"))$WTMP)
+lay_gb2<-mean((filter(gbj,rdate>"2018-07-01 00:00:00" & rdate< "2018-08-31 00:00:00"))$WTMP)
+lay_hm2<-mean((filter(hmi2,rdate>"2018-06-1 00:00:00" & rdate< "2018-07-15 00:00:00"))$WTMP)#inat
+lay_to2<-mean((filter(to3,rdate>"2018-06-1 00:00:00" & rdate< "2018-07-15 00:00:00"))$WTMP)#ruesink
+
+data$lay1<-ifelse(data$site=="BF",lay_bf,ifelse(data$site=="FB",lay_fb,ifelse(data$site=="GB",lay_gb,ifelse(data$site=="HM",lay_hm,ifelse(data$site=="OY",lay_oy,ifelse(data$site=="TO",lay_to,ifelse(data$site=="WH",lay_wh,NA)))))))
+
+data$lay2<-ifelse(data$site=="BF",lay_bf2,ifelse(data$site=="FB",lay_fb2,ifelse(data$site=="GB",lay_gb2,ifelse(data$site=="HM",lay_hm2,ifelse(data$site=="OY",lay_oy2,ifelse(data$site=="TO",lay_to2,ifelse(data$site=="WH",lay_wh2,NA)))))))
+
 ##counts by site and acclimation 
 counts<-ddply(data,.(data$site,data$acc),nrow)
 names(counts)<-c("Site","Acclimation","N")
@@ -298,7 +325,7 @@ names(counts)<-c("Site","Acclimation","N","Mean")
 
 It appears that survival and Time to hatching are correlated, and so should not be included together in models.
 ```{r,echo=F,warning=F}
-data[,c(3,8,12,14)]->a
+data[,c(2,3,8,12)]->a
 a<-na.omit(a)
 c<-cor(a)
 chart.Correlation(c)
@@ -322,6 +349,8 @@ ggplot(data.moms,aes(x=site,y=mom.l))+geom_point()
 
 data$no.embryos<-as.integer(data$no.embryos)
 data$momID<-as.factor(data$momID)
+data$hatchID<-as.factor(data$hatchID)
+
 
 #scaling and centering our variables
 
@@ -331,29 +360,28 @@ data$momID<-as.factor(data$momID)
     data2$site<-data$site
 
   ##THESE WORK, but slow! 
-  a<-glmmTMB(no.embryos ~ 1+(1|momID), data=data,family=compois)
-  b<-glmmTMB(no.embryos ~ lat+(1|momID),data=data,family=compois)
-  c<-glmmTMB(no.embryos ~ mean+(1|momID),data=data,family=compois)
-  d<-glmmTMB(no.embryos ~ s.mean+(1|momID),data=data,family=compois)
-  e<-glmmTMB(no.embryos ~ q.mean+(1|momID),data=data,family=compois)
-  f<-glmmTMB(no.embryos ~ t.mean+(1|momID),data=data,family=compois)
-  g<-glmmTMB(no.embryos ~ lat+ocean+(1|momID),data=data,family=compois)
-  h<-glmmTMB(no.embryos ~ mean+ocean+(1|momID),data=data,family=compois)
-  i<-glmmTMB(no.embryos ~ s.mean+ocean+(1|momID),data=data,family=compois)
-  j<-glmmTMB(no.embryos ~ q.mean+ocean+(1|momID),data=data,family=compois)
-  k<-glmmTMB(no.embryos ~ t.mean+ocean+(1|momID),data=data,family=compois)
-  l<-glmmTMB(no.embryos ~ max+(1|momID),data=data,family=compois)
-  m<-glmmTMB(no.embryos ~ max+ocean+(1|momID),data=data,family=compois)
+  a<-glmmTMB(no.embryos ~ 1+(1|hatchID), data=data,family=compois)
+  b<-glmmTMB(no.embryos ~ lat+(1|hatchID),data=data,family=compois)
+  c<-glmmTMB(no.embryos ~ mean+(1|hatchID),data=data,family=compois)
+  d<-glmmTMB(no.embryos ~ s.mean+(1|hatchID),data=data,family=compois)
+  e<-glmmTMB(no.embryos ~ q.mean+(1|hatchID),data=data,family=compois)
+  f<-glmmTMB(no.embryos ~ t.mean+(1|hatchID),data=data,family=compois)
+  g<-glmmTMB(no.embryos ~ max+(1|hatchID),data=data,family=compois)
+  h<-glmmTMB(no.embryos ~ lay1+(1|hatchID),data=data,family=compois)
+  i<-glmmTMB(no.embryos ~ lay2+(1|hatchID),data=data,family=compois)
+ 
   
-  noe<-list(a,b,c,d,e,f,g,h,i,j,k,l,m)
+  
+  noe<-list(a,b,c,d,e,f,g,h,i)
   aictab(noe)
   
+  #global model
   model<-glm(no.embryos ~q.mean+t.mean+s.mean+mean+lat,data=data,family="poisson")
 
 1/(car::vif(model))
 
 #four models are well supported, so we will model average
-  modeavelist<-list(l,f,d,e)
+  modeavelist<-list(g,f,e,d)
   summary(model.avg(modeavelist))
   
   ##troubleshooting
@@ -376,8 +404,8 @@ overdisp_fun(noem)
 #no overdispersion!
 
 
-
-sjstats::r2(e)
+#acquire r^2
+sjstats::r2(d)
 ```
 So, the null model predicts this the best. We can say that the number of embryos does not appear to really change by home population. But, a few models were within the 2 delta AIC limit. So let's plot with one. 
 
@@ -415,7 +443,27 @@ tth<-list(
   "t.mean*acc"=glmmTMB(Time.to.hatch ~ t.mean*acc+(1|momID),data,family="gaussian"),
   "max*acc"=glmmTMB(Time.to.hatch ~ max*acc+(1|momID),data,family="gaussian"),
   "max+acc"=glmmTMB(Time.to.hatch ~ max+acc+(1|momID),data,family="gaussian"),
-  "max"=glmmTMB(Time.to.hatch ~ max+(1|momID),data,family="gaussian"))
+  "max"=glmmTMB(Time.to.hatch ~ max+(1|momID),data,family="gaussian"),
+  
+  "clutch_null"=glmmTMB(Time.to.hatch ~ 1+(1|hatchID),data,family="gaussian"),
+  "clutch_lat"=glmmTMB(Time.to.hatch ~ lat+(1|hatchID),data,family="gaussian"),
+  "clutch_mean"=glmmTMB(Time.to.hatch ~ mean+(1|hatchID),data,family="gaussian"),
+  "clutch_s.mean"=glmmTMB(Time.to.hatch ~ s.mean+(1|hatchID),data,family="gaussian"),
+  "clutch_q.mean"=glmmTMB(Time.to.hatch ~ q.mean+(1|hatchID),data,family="gaussian"),
+  "clutch_t.mean"=glmmTMB(Time.to.hatch ~ t.mean+(1|hatchID),data,family="gaussian"),
+  "clutch_lat+acc"=glmmTMB(Time.to.hatch ~ lat+acc+(1|hatchID),data,family="gaussian"),
+  "clutch_mean+acc"=glmmTMB(Time.to.hatch ~ mean+acc+(1|hatchID),data,family="gaussian"),
+  "clutch_s.mean+acc"=glmmTMB(Time.to.hatch ~ s.mean+acc+(1|hatchID),data,family="gaussian"),
+  "clutch_q.mean+acc"=glmmTMB(Time.to.hatch ~ q.mean+acc+(1|hatchID),data,family="gaussian"),
+  "clutch_t.mean+acc"=glmmTMB(Time.to.hatch ~ t.mean+acc+(1|hatchID),data,family="gaussian"),
+  "clutch_lat*acc"=glmmTMB(Time.to.hatch ~ lat*acc+(1|hatchID),data,family="gaussian"),
+  "clutch_mean*acc"=glmmTMB(Time.to.hatch ~ mean*acc+(1|hatchID),data,family="gaussian"),
+  "clutch_s.mean*acc"=glmmTMB(Time.to.hatch ~ s.mean*acc+(1|hatchID),data,family="gaussian"),
+  "clutch_q.mean*acc"=glmmTMB(Time.to.hatch ~ q.mean*acc+(1|hatchID),data,family="gaussian"),
+  "clutch_t.mean*acc"=glmmTMB(Time.to.hatch ~ t.mean*acc+(1|hatchID),data,family="gaussian"),
+  "clutch_max*acc"=glmmTMB(Time.to.hatch ~ max*acc+(1|hatchID),data,family="gaussian"),
+  "clutch_max+acc"=glmmTMB(Time.to.hatch ~ max+acc+(1|hatchID),data,family="gaussian"),
+  "clutch_max"=glmmTMB(Time.to.hatch ~ max+(1|hatchID),data,family="gaussian"))
 
 aictab(tth)
 
@@ -430,7 +478,7 @@ a<-glmmTMB(Time.to.hatch ~ lat*acc+(1|momID),data,family="gaussian")
 b<-glmmTMB(Time.to.hatch ~ mean*acc+(1|momID),data,family="gaussian")
 summary(model.avg(a,b))
 
-tthm<-tth$'mean*acc'
+tthm<-tth$'clutch_mean*acc'
 summary(tthm)
 
 #how do the residuals look
@@ -479,38 +527,39 @@ hist(data$survivor)
 y=cbind(data$no.hatch,data$no.dead)
 y<-na.omit(y)
 surv<-list(
-  "null"=glmmTMB(y ~ (1|momID), data,family=binomial),
-  "lat"=glmmTMB(y ~ lat+(1|momID),data,family=binomial),
-  "mean"=glmmTMB(y ~ mean+(1|momID),data,family=binomial),
-  "s.mean"=glmmTMB(y ~ s.mean+(1|momID),data,family=binomial),
-  "q.mean"=glmmTMB(y ~ q.mean+(1|momID),data,family=binomial),
-  "t.mean"=glmmTMB(y ~ t.mean+(1|momID),data,family=binomial),
-  "lat+acc"=glmmTMB(y ~ lat+acc+(1|momID),data,family=binomial),
-  "mean+acc"=glmmTMB(y ~ mean+acc+(1|momID),data,family=binomial),
-  "s.mean+acc"=glmmTMB(y ~ s.mean+acc+(1|momID),data,family=binomial),
-  "q.mean+acc"=glmmTMB(y ~ q.mean+acc+(1|momID),data,family=binomial),
-  "t.mean+acc"=glmmTMB(y ~ t.mean+acc+(1|momID),data,family=binomial),
-  "lat*acc"=glmmTMB(y ~ lat*acc+(1|momID),data,family=binomial),
-  "mean*acc"=glmmTMB(y ~ mean*acc+(1|momID),data,family=binomial),
-  "s.mean*acc"=glmmTMB(y ~ s.mean*acc+(1|momID),data,family=binomial),
-  "q.mean*acc"=glmmTMB(y ~ q.mean*acc+(1|momID),data,family=binomial),
-  "t.mean*acc"=glmmTMB(y ~ t.mean*acc+(1|momID),data,family=binomial),
-  "max*acc"=glmmTMB(y ~ max*acc+(1|momID),data,family=binomial),
-  "max+acc"=glmmTMB(y ~ max+acc+(1|momID),data,family=binomial),
-  "max"=glmmTMB(y ~ max+(1|momID),data,family=binomial))
+  "clutch_null"=glmmTMB(y ~ (1|hatchID), data,family=binomial),
+  "clutch_lat"=glmmTMB(y ~ lat+(1|hatchID),data,family=binomial),
+  "clutch_mean"=glmmTMB(y ~ mean+(1|hatchID),data,family=binomial),
+  "clutch_s.mean"=glmmTMB(y ~ s.mean+(1|hatchID),data,family=binomial),
+  "clutch_q.mean"=glmmTMB(y ~ q.mean+(1|hatchID),data,family=binomial),
+  "clutch_t.mean"=glmmTMB(y ~ t.mean+(1|hatchID),data,family=binomial),
+  "clutch_lat+acc"=glmmTMB(y ~ lat+acc+(1|hatchID),data,family=binomial),
+  "clutch_mean+acc"=glmmTMB(y ~ mean+acc+(1|hatchID),data,family=binomial),
+  "clutch_s.mean+acc"=glmmTMB(y ~ s.mean+acc+(1|hatchID),data,family=binomial),
+  "clutch_q.mean+acc"=glmmTMB(y ~ q.mean+acc+(1|hatchID),data,family=binomial),
+  "clutch_t.mean+acc"=glmmTMB(y ~ t.mean+acc+(1|hatchID),data,family=binomial),
+  "clutch_lat*acc"=glmmTMB(y ~ lat*acc+(1|hatchID),data,family=binomial),
+  "clutch_mean*acc"=glmmTMB(y ~ mean*acc+(1|hatchID),data,family=binomial),
+  "clutch_s.mean*acc"=glmmTMB(y ~ s.mean*acc+(1|hatchID),data,family=binomial),
+  "clutch_q.mean*acc"=glmmTMB(y ~ q.mean*acc+(1|hatchID),data,family=binomial),
+  "clutch_t.mean*acc"=glmmTMB(y ~ t.mean*acc+(1|hatchID),data,family=binomial),
+  "clutch_max*acc"=glmmTMB(y ~ max*acc+(1|hatchID),data,family=binomial),
+  "clutch_max+acc"=glmmTMB(y ~ max+acc+(1|hatchID),data,family=binomial),
+  "clutch_max"=glmmTMB(y ~ max+(1|hatchID),data,family=binomial))
 
 
 aictab(surv)
 subset<-subset(aictab(surv),Delta_AICc<2)#choosing which models
+subset
 
-a<-glmmTMB(y ~ q.mean+(1|momID),data,family=binomial)
-b<-glmmTMB(y ~ s.mean+(1|momID),data,family=binomial)
-c<-glmmTMB(y ~ t.mean+(1|momID),data,family=binomial)
-d<-glmmTMB(y ~ q.mean+acc+(1|momID),data,family=binomial)
-e<-glmmTMB(y ~ s.mean+acc+(1|momID),data,family=binomial)
-g<-glmmTMB(y ~ t.mean+acc+(1|momID),data,family=binomial)
-h<-glmmTMB(y ~ lat+(1|momID),data,family=binomial)
-i<-glmmTMB(y ~ max+(1|momID),data,family=binomial)
+a<-glmmTMB(y ~ q.mean+(1|hatchID),data,family=binomial)
+b<-glmmTMB(y ~ s.mean+(1|hatchID),data,family=binomial)
+c<-glmmTMB(y ~ t.mean+(1|hatchID),data,family=binomial)
+d<-glmmTMB(y ~ q.mean+acc+(1|hatchID),data,family=binomial)
+e<-glmmTMB(y ~ s.mean+acc+(1|hatchID),data,family=binomial)
+g<-glmmTMB(y ~ t.mean+acc+(1|hatchID),data,family=binomial)
+h<-glmmTMB(y ~ lat+(1|hatchID),data,family=binomial)
+i<-glmmTMB(y ~ max+(1|hatchID),data,family=binomial)
 
 
 #a bunch of top models. Time to model average
