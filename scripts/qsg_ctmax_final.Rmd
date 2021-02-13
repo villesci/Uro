@@ -237,6 +237,9 @@ LT.plot2
 
 ggplot(data=data,aes(x=survival,y=weight,group=survival))+geom_boxplot()
 summary(aov(survival~weight,data=data))
+summary(lm(data=data,weight~acc))
+summary(lm(data=data,survival~weight))
+
 
 ```
 Survival does not determined by weight, which is our proxy for age. 
@@ -444,7 +447,27 @@ lt50s$P<-ifelse(lt50s$P=="I",1,ifelse(lt50s$P=="II",2,NA))
 lt50s<-filter(lt50s,run_ID!="2")
 plot1<-ggplot(lt50s,aes(x=lat,y=LT50))+geom_point()+facet_wrap(acc~P)+geom_smooth(se=F,method="lm")+xlab("latitude,outlier_deaths_included")
 
+#season length
+#egg laying mean
+lay_fb<-mean((filter(fb,rdate>"2018-03-01 00:00:00" & rdate< "2018-03-30 00:00:00"))$WTMP)
+lay_bf<-mean((filter(bf,rdate>"2018-03-15 00:00:00" & rdate< "2018-04-15 00:00:00"))$WTMP)
+lay_oy<-mean((filter(oy,rdate>"2018-05-01 00:00:00" & rdate< "2018-05-30 00:00:00"))$WTMP)
+lay_wh<-mean((filter(wh,rdate>"2018-05-15 00:00:00" & rdate< "2018-06-15 00:00:00"))$WTMP)
+lay_gb<-mean((filter(gbj,rdate>"2018-06-01 00:00:00" & rdate< "2018-06-30 00:00:00"))$WTMP)
+lay_hm<-mean((filter(hmi2,rdate>"2018-04-15 00:00:00" & rdate< "2018-05-15 00:00:00"))$WTMP)#inat
+lay_to<-mean((filter(to3,rdate>"2018-04-15 00:00:00" & rdate< "2018-05-15 00:00:00"))$WTMP)#ruesink
+#max
+lay_fb2<-mean((filter(fb,rdate>"2018-03-01 00:00:00" & rdate< "2018-05-30 00:00:00"))$WTMP)
+lay_bf2<-mean((filter(bf,rdate>"2018-03-15 00:00:00" & rdate< "2018-05-30 00:00:00"))$WTMP)
+lay_oy2<-mean((filter(oy,rdate>"2018-05-01 00:00:00" & rdate< "2018-07-30 00:00:00"))$WTMP)
+lay_wh2<-mean((filter(wh,rdate>"2018-07-01 00:00:00" & rdate< "2018-08-31 00:00:00"))$WTMP)
+lay_gb2<-mean((filter(gbj,rdate>"2018-07-01 00:00:00" & rdate< "2018-08-31 00:00:00"))$WTMP)
+lay_hm2<-mean((filter(hmi2,rdate>"2018-06-1 00:00:00" & rdate< "2018-07-15 00:00:00"))$WTMP)#inat
+lay_to2<-mean((filter(to3,rdate>"2018-06-1 00:00:00" & rdate< "2018-07-15 00:00:00"))$WTMP)#ruesink
 
+lt50s$lay1<-ifelse(lt50s$site=="BF",lay_bf,ifelse(lt50s$site=="FB",lay_fb,ifelse(lt50s$site=="GB",lay_gb,ifelse(lt50s$site=="HM",lay_hm,ifelse(lt50s$site=="OY",lay_oy,ifelse(lt50s$site=="TO",lay_to,ifelse(lt50s$site=="WH",lay_wh,NA)))))))
+
+lt50s$lay2<-ifelse(lt50s$site=="BF",lay_bf2,ifelse(lt50s$site=="FB",lay_fb2,ifelse(lt50s$site=="GB",lay_gb2,ifelse(lt50s$site=="HM",lay_hm2,ifelse(lt50s$site=="OY",lay_oy2,ifelse(lt50s$site=="TO",lay_to2,ifelse(lt50s$site=="WH",lay_wh2,NA)))))))
 ```
 
 
@@ -465,11 +488,7 @@ all.day <- all %>%
 
   all.day$date<-paste(all.day$year,all.day$month,all.day$day, sep="-") %>% ymd() %>% as.Date()
 
-ggplot(data=all,aes(x=date,y=WTMP,color=site,group=site))+scale_color_viridis_d(name="Site",labels=c("Great Bay, NH","Woods Hole, MA","Humboldt, CA","Tomales,CA","Oyster, VA","Beaufort, NC","Folly Beach, SC"))+theme_classic()+ylab("SST (°C)")+xlab("Month")+scale_fill_discrete(name="Site",labels=c("Great Bay, NH","Woods Hole, MA","Humboldt, CA","Tomales,CA","Oyster, VA","Beaufort, NC","Folly Beach, SC"))+scale_x_date(date_labels = "%b")+ 
-theme(axis.text.y=element_text(size=12),axis.title.x=element_text(size=22,vjust=-.1),axis.text.x=element_text(size=12),
-panel.grid.major=element_blank(),panel.grid.minor=element_blank(),
-axis.title.y=element_text(size=22),legend.text=element_text(size=14),legend.title=element_text(size=22))+
-guides(color=guide_legend(override.aes=list(fill=NA)))+stat_summary(geom="line",fun.y=mean,size=2)
+#ggplot(data=all,aes(x=date,y=WTMP,color=site,group=site))+scale_color_viridis_d(name="Site",labels=c("Great Bay, NH","Woods Hole, MA","Humboldt, CA","Tomales,CA","Oyster, VA","Beaufort, NC","Folly Beach, SC"))+theme_classic()+ylab("SST (°C)")+xlab("Month")+scale_fill_discrete(name="Site",labels=c("Great Bay, NH","Woods Hole, MA","Humboldt, CA","Tomales,CA","Oyster, VA","Beaufort, NC","Folly Beach, SC"))+scale_x_date(date_labels = "%b")+ theme(axis.text.y=element_text(size=12),axis.title.x=element_text(size=22,vjust=-.1),axis.text.x=element_text(size=12),panel.grid.major=element_blank(),panel.grid.minor=element_blank(),axis.title.y=element_text(size=22),legend.text=element_text(size=14),legend.title=element_text(size=22))+guides(color=guide_legend(override.aes=list(fill=NA)))+stat_summary(geom="line",fun.y=mean,size=2)
 ```
 ```{r,include=F}
 ##which dates have a mean above 24C?
@@ -478,7 +497,7 @@ guides(color=guide_legend(override.aes=list(fill=NA)))+stat_summary(geom="line",
 row.has.na <- apply(bf, 1, function(x){any(is.na(x))})
 bf <- bf[!row.has.na,]
 dfX <- xts(bf$WTMP, as.Date(bf$rdate))
-bf_24<-apply.daily(dfX, mean)
+bf_24<-apply.daily(dfX, max)
 
 row.has.na <- apply(fb, 1, function(x){any(is.na(x))})
 fb <- fb[!row.has.na,]
@@ -531,7 +550,7 @@ We can see that the variance about the lines of best fit and the slope of the li
 # Comparing lt50s among acclimations 
 
 ```{r,echo=F,warning=F}
-c<-cor(lt50s[,c(8:11,13)])
+c<-cor(lt50s[,c(8:11,13:16)])
 chart.Correlation(c)
 prot1<-filter(lt50s,P=="1")
 mods<-list(
@@ -552,32 +571,24 @@ mods<-list(
 "s.mean*acc"=lm(LT50~s.mean.sst*acc,prot1),
 "q.mean*acc"=lm(LT50~q.mean.sst*acc,prot1),
 "t.mean*acc"=lm(LT50~t.mean.sst*acc,prot1),
-"olat"=lm(LT50~lat+oce,prot1),#latitude
-"omean"=lm(LT50~mean.sst+oce,prot1),#mean yearly sst
-"os.mean"=lm(LT50~s.mean.sst+oce,prot1),#mean summer sst (06/01 - 09/01)
-"oq.mean"=lm(LT50~q.mean.sst+oce,prot1),#upper 25% quartile of summer mean sst
-"ot.mean"=lm(LT50~t.mean.sst+oce,prot1),#upper 10th percentile of summer mean sst
-"oacc"=lm(LT50~acc+oce,prot1),
-"olat.acc"=lm(LT50~lat+acc+oce,prot1),
-"omean.acc"=lm(LT50~mean.sst+acc+oce,prot1),
-"os.mean.acc"=lm(LT50~s.mean.sst+acc+oce,prot1),
-"oq.mean.acc"=lm(LT50~q.mean.sst+acc+oce,prot1),
-"ot.mean.acc"=lm(LT50~t.mean.sst+acc+oce,prot1),
-"olat*acc"=lm(LT50~lat*acc*oce,prot1),
-"omean*acc"=lm(LT50~mean.sst*acc*oce,prot1),
-"os.mean*acc"=lm(LT50~s.mean.sst*acc*oce,prot1),
-"oq.mean*acc"=lm(LT50~q.mean.sst*acc*oce,prot1),
-"ot.mean*acc"=lm(LT50~t.mean.sst*acc*oce,prot1),
 "max"=lm(LT50~max,prot1),
 "maxacc"=lm(LT50~max+acc,prot1),
 "max*acc"=lm(LT50~max*acc,prot1),
-"maxoacc"=lm(LT50~max+acc+oce,prot1),
-"maxoacc*"=lm(LT50~max*acc*oce,prot1))
+"lay1"=lm(LT50~lay1,prot1),
+"lay2"=lm(LT50~lay2,prot1),
+"lay1.acc"=lm(LT50~lay1+acc,prot1),
+"lay2.acc"=lm(LT50~lay2+acc,prot1),
+"lay1*acc"=lm(LT50~lay1*acc,prot1),
+"lay2*acc"=lm(LT50~lay2*acc,prot1))
 
 
 aictab(mods)
 mod1=(mods$'max*acc')#best fit model
 summary(mod1)
+
+mod1=(mods$'lay2*acc')#best fit model
+summary(mod1)
+summary(lm(LT50~lay2*acc,prot1))
 
 
 by_acc<-group_by(lt50s,acc)
@@ -605,8 +616,8 @@ hist(resid(mod1))
 prot1$acc<-as.factor(prot1$acc)
 
 #make models for both acclimation temperatures
-models1<-dlply(prot1,"acc",.fun=make_model)
-predvals.acc<-ldply(models1,.fun=predictvals,xvar="t.mean.sst",yvar="LT50")
+#models1<-dlply(prot1,"acc",.fun=make_model)
+#predvals.acc<-ldply(models1,.fun=predictvals,xvar="t.mean.sst",yvar="LT50")
 
 fig5<-ggplot(prot1,aes(x=max,y=LT50,color=acc,shape=oce,fill=acc))+geom_point(size=3)+theme_classic()+scale_color_manual(labels=c("20°C","24°C"),name="Acclimation",values=c("blue","red"))+theme_classic()+xlab("Habitat Temperature (SST °C")+scale_fill_manual(labels=c("20°C","24°C"),name="Acclimation",values=c("blue","red"))+scale_shape_manual(labels=c("Atlantic","Pacific"),name="Ocean",values=c(21,24))+
   theme(text=element_text(family="arial",size=22))+labs(y=expression(paste("LT"[50],  " (°C)")), x=expression(paste("T"[hab], " (SST °C)")))+scale_x_continuous(breaks=c(20,22,24,26,28,30,32,34),limits=c(20,34))+scale_y_continuous(breaks=c(35,36,37,38,39,40,41),limits=c(35,41))+  
@@ -642,43 +653,31 @@ prot1$acc<-as.factor(prot1$acc)
 
 ##Warming tolerance using Max as Thab
 warm.max<-list(
-"a.1"<-glm(wt.max~lat,prot1,family="gaussian"),
-"b.1"<-glm(wt.max~mean.sst,prot1,family="gaussian"),
-"c.1"<-glm(wt.max~s.mean.sst,prot1,family="gaussian"),
-"d.1"<-glm(wt.max~q.mean.sst,prot1,family="gaussian"),
-"e.1"<-glm(wt.max~t.mean.sst,prot1,family="gaussian"),
-"f.1"<-glm(wt.max~lat+acc,prot1,family="gaussian"),
-"g.1"<-glm(wt.max~mean.sst+acc,prot1,family="gaussian"),
-"h.1"<-glm(wt.max~s.mean.sst+acc,prot1,family="gaussian"),
-"i.1"<-glm(wt.max~q.mean.sst+acc,prot1,family="gaussian"),
-"j.1"<-glm(wt.max~t.mean.sst+acc,prot1,family="gaussian"),
-"k.1"<-glm(wt.max~acc,prot1,family="gaussian"),
-"l.1"<-glm(wt.max~lat*acc,prot1,family="gaussian"),
-"m.1"<-glm(wt.max~mean.sst*acc,prot1,family="gaussian"),
-"n.1"<-glm(wt.max~s.mean.sst*acc,prot1,family="gaussian"),
-"o.1"<-glm(wt.max~q.mean.sst*acc,prot1,family="gaussian"),
-"p.1"<-glm(wt.max~t.mean.sst*acc,prot1,family="gaussian"),
-"a.2"<-glm(wt.max~lat+oce,prot1,family="gaussian"),
-"b.2"<-glm(wt.max~mean.sst+oce,prot1,family="gaussian"),
-"c.2"<-glm(wt.max~s.mean.sst+oce,prot1,family="gaussian"),
-"d.2"<-glm(wt.max~q.mean.sst+oce,prot1,family="gaussian"),
-"e.2"<-glm(wt.max~t.mean.sst+oce,prot1,family="gaussian"),
-"f.2"<-glm(wt.max~lat+acc+oce,prot1,family="gaussian"),
-"g.2"<-glm(wt.max~mean.sst+acc+oce,prot1,family="gaussian"),
-"h.2"<-glm(wt.max~s.mean.sst+acc+oce,prot1,family="gaussian"),
-"i.2"<-glm(wt.max~q.mean.sst+acc+oce,prot1,family="gaussian"),
-"j.2"<-glm(wt.max~t.mean.sst+acc+oce,prot1,family="gaussian"),
-"k.2"<-glm(wt.max~acc+oce,prot1,family="gaussian"),
-"l.2"<-glm(wt.max~lat*acc*oce,prot1,family="gaussian"),
-"m.2"<-glm(wt.max~mean.sst*acc*oce,prot1,family="gaussian"),
-"n.2"<-glm(wt.max~s.mean.sst*acc*oce,prot1,family="gaussian"),
-"o.2"<-glm(wt.max~q.mean.sst*acc*oce,prot1,family="gaussian"),
-"p.2"<-glm(wt.max~t.mean.sst*acc*oce,prot1,family="gaussian"),
-"q.2"<-glm(wt.max~max,prot1,family="gaussian"),
-"r.2"<-glm(wt.max~max+acc,prot1,family="gaussian"),
-"s.2"<-glm(wt.max~max*acc,prot1,family="gaussian"),
-"t.2"<-glm(wt.max~max+acc+oce,prot1,family="gaussian"),
-"u.2"<-glm(wt.max~max*acc*oce,prot1,family="gaussian"))
+"a.1"=lm(wt.max~lat,prot1),
+"b.1"=lm(wt.max~mean.sst,prot1),
+"c.1"=lm(wt.max~s.mean.sst,prot1),
+"d.1"=lm(wt.max~q.mean.sst,prot1),
+"e.1"=lm(wt.max~t.mean.sst,prot1),
+"f.1"=lm(wt.max~lat+acc,prot1),
+"g.1"=lm(wt.max~mean.sst+acc,prot1),
+"h.1"=lm(wt.max~s.mean.sst+acc,prot1),
+"i.1"=lm(wt.max~q.mean.sst+acc,prot1),
+"j.1"=lm(wt.max~t.mean.sst+acc,prot1),
+"k.1"=lm(wt.max~acc,prot1),
+"l.1"=lm(wt.max~lat*acc,prot1),
+"m.1"=lm(wt.max~mean.sst*acc,prot1),
+"n.1"=lm(wt.max~s.mean.sst*acc,prot1),
+"o.1"=lm(wt.max~q.mean.sst*acc,prot1),
+"p.1"=lm(wt.max~t.mean.sst*acc,prot1),
+"q.2"=lm(wt.max~max,prot1),
+"r.2"=lm(wt.max~max+acc,prot1),
+"s.2"=lm(wt.max~max*acc,prot1),
+"t.2"=lm(wt.max~lay1,prot1),
+"u.2"=lm(wt.max~lay2,prot1),
+"v.2"=lm(wt.max~lay1+acc,prot1),
+"w.2"=lm(wt.max~lay2+acc,prot1),
+"x.2"=lm(wt.max~lay1*acc,prot1),
+"y.2"=lm(wt.max~lay2*acc,prot1))
 
 aictab(warm.max)
 summary(s.2)#best fit model
