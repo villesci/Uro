@@ -633,7 +633,7 @@ warm.max<-list(
 "p.1"=lm(wt.max~t.mean.sst*acc,prot1),
 "q.2"=lm(wt.max~max,prot1),
 "r.2"=lm(wt.max~max+acc,prot1),
-"s.2"=lm(wt.max~max*acc,prot1))
+"s.2"=lm(wt.max~max*acc,prot1)) 
 
 aictab(warm.max)
 summary(s.2)#best fit model
