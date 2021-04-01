@@ -147,6 +147,19 @@ data = filter(data,site!="FB2")
 data = filter(data,site!="OYII")
 data = filter(data,site!="TO2")
 
+##data<-data[-c(652),]
+##data<-data[-c(652),]
+data<-data[-c(1),] # remove a single false negative
+##data<-data[-c(35),]
+##data<-data[-c(35),]
+#data<-data[-c(524),]
+#data<-data[-c(669),]
+#data<-data[-c(748),]
+
+#View(which(data$t5<34&data$survival==0))
+data<-filter(data,run_ID !=3)
+#The above observations and run are problematic and eliminated.
+
 data$site<-factor(data$site)
 data$survival<-as.numeric(data$survival)
 #data$survival<-factor(data$survival)
@@ -179,12 +192,12 @@ LT.plot2<-ggplot(data, aes(x=t5,y=survival, color=acc))+
 ```{r,include=T,echo=F}
 LT.plot2
 
+#this include both protocol 1 and 2
 
 ggplot(data=data,aes(x=survival,y=weight,group=survival))+geom_boxplot()
 summary(aov(survival~weight,data=data))
 summary(lm(data=data,weight~acc))
 summary(lm(data=data,survival~weight))
-
 
 ```
 Survival does not determined by weight, which is our proxy for age. 
@@ -228,20 +241,7 @@ p+geom_hline(yintercept=.5)+geom_vline(xintercept=a1)
 Here we can see how I will analyze each "run." Note that there is an outlier death. 
 
 Below is a loop I used to extact LT50s by run and store in a dataframe. 
-```{r,include=F}
-##data<-data[-c(652),]
-##data<-data[-c(652),]
-data<-data[-c(1),] # remove a single false negative
-##data<-data[-c(35),]
-##data<-data[-c(35),]
-#data<-data[-c(524),]
-#data<-data[-c(669),]
-#data<-data[-c(748),]
 
-#View(which(data$t5<34&data$survival==0))
-data<-filter(data,run_ID !=3)
-#The above observations and run are problematic and eliminated.
-```
 ```{r,include=T,warning=F}
 ##forloop
 
@@ -268,7 +268,7 @@ for(i in 1:length(modlist)){
 
 dflt<-data.frame(LT50,ncol=length(LT50))
 dflt<-melt(as.data.table(dflt))
-dflt<-dflt[-c(31),]#32 if we keep run_ID ==3
+dflt<-dflt[-c(31),]#32 if we keep run_ID ==3, this removes ncol
 dfdlt2<-data.frame(dflt,runs)
 lt50s<-subset(dfdlt2,select=-c(variable))
 names(lt50s)<-c("LT50","run_ID")
@@ -389,7 +389,7 @@ lt50s$max<-ifelse(lt50s$site=="BF",q[4,4], ifelse(lt50s$site=="OY",q[3,4],ifelse
 #lat
 lt50s$lat<-ifelse(lt50s$site=="BF",34.819,ifelse(lt50s$site=="FB",32.660525,ifelse(lt50s$site=="GB",43.089589,ifelse(lt50s$site=="HM",40.849448,ifelse(lt50s$site=="OY",37.288562,ifelse(lt50s$site=="TO",38.12805,ifelse(lt50s$site=="WH",41.57687,NA)))))))
 lt50s$P<-ifelse(lt50s$P=="I",1,ifelse(lt50s$P=="II",2,NA))
-lt50s<-filter(lt50s,run_ID!="2")
+lt50s<-filter(lt50s,run_ID!="2") #this run was one of the first ones I did, and there was error in how snail survival was quantified. Thus, I am dropping this observation. 
 plot1<-ggplot(lt50s,aes(x=lat,y=LT50))+geom_point()+facet_wrap(acc~P)+geom_smooth(se=F,method="lm")+xlab("latitude,outlier_deaths_included")
 
 
@@ -443,11 +443,6 @@ gbj <- gbj[!row.has.na,]
 dfX <- xts(gbj$WTMP, as.Date(gbj$rdate))
 gb_24<-apply.monthly(dfX, base::mean)
 
-oy_24
-bf_24
-fb_24
-wh_24
-gb_24
 
 ```
 
@@ -477,7 +472,26 @@ We can see that the variance about the lines of best fit and the slope of the li
 c<-cor(lt50s[,c(8:11,13:13)])
 chart.Correlation(c)
 prot1<-filter(lt50s,P=="1")
-prot1$acc<-as.factor(prot1$acc)
+
+#now doing by protocol 1 only
+data_p1<-filter(data,protocol=="1")
+data_p1<-filter(data_p1,run_ID!="2")
+data_p1$grams<-data_p1$weight
+
+summary(glm(survival~grams*t5,data=data_p1,family="binomial"))
+summary(glm(t5~survival,data=data_p1,family="gaussian"))
+
+summary(glm(survival~grams,data=data_p1,family="binomial"))
+ggplot(data=data_p1,aes(x=grams,y=survival))+geom_point()+stat_smooth(method="glm",method.args=list(family="binomial"))
+
+#snail weight insignificant by final temperature -so randomly distributed
+summary(glm(t5~grams,data=data_p1,family="gaussian"))
+ggplot(data=data_p1,aes(x=t5,y=grams))+geom_point()+geom_smooth(method='lm')
+
+#snail weight not really signficany between acclimations, but close
+summary(lm(data=data_p1,weight~acc))
+ggplot(data=data_p1,aes(x=acc, y=weight))+geom_point()+geom_smooth()
+
 mods<-list(
 "null"=lm(LT50~1,prot1),
 "lat"=lm(LT50~lat,prot1),#latitude
@@ -504,6 +518,8 @@ mods<-list(
 aictab(mods)
 mod1=(mods$'max*acc')#best fit model
 summary(mod1)
+
+prot1$acc<-as.factor(prot1$acc)
 
 
 by_acc<-group_by(lt50s,acc)

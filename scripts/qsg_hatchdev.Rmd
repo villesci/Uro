@@ -28,7 +28,7 @@ library(scales)
 library(glmmTMB)
 library(betareg)
 library(MASS)
-library(gridExtra)
+library(gridExtra) 
 
 
 
@@ -124,7 +124,7 @@ We checked adult broodstock every day for evidence of egg capsule laying. When c
 
 ## Survivorship
 
-Once juveniles hatched from their capsules, we counted the number of juveniles that successfully developed into juvenile snails. To calcualte survivorship, we divided the number of initial embryos by the number of successfully developed juveniles. 
+Once juveniles hatched from their capsules, we counted the number of juveniles that successfully developed into juvenile snails. To calcualte survivorship, we divided the number of initial embryos by the number of successfully developed juveniles 
 
 
 ## Metadata
