@@ -32,6 +32,7 @@ library(magrittr)
 library(lubridate)
 library(tidyr)
 library(xts)
+library(brglm2)
 
 loadfonts(device = "win")
  
@@ -244,6 +245,7 @@ Below is a loop I used to extact LT50s by run and store in a dataframe.
 
 ```{r,include=T,warning=F}
 ##forloop
+data$centered<-scale(data$weight, center=T, scale=T)
 
 runs<-unique(data$run_ID)
 df<-list()
@@ -475,20 +477,35 @@ prot1<-filter(lt50s,P=="1")
 
 #now doing by protocol 1 only
 data_p1<-filter(data,protocol=="1")
-data_p1<-filter(data_p1,run_ID!="2")
+data_p1<-filter(data_p1,run_ID!="2") #erroneous run
 data_p1$grams<-data_p1$weight
+#data_p1<-(data_p1[-c(569,573,244,584),])
+data_p1$centered<-scale(data_p1$grams, center=T, scale=T)
+data_p1$t5c<-scale(data_p1$t5,center=T,scale=T)
 
-summary(glm(survival~grams*t5,data=data_p1,family="binomial"))
-summary(glm(t5~survival,data=data_p1,family="gaussian"))
+update(summary(glm(survival~t5*centered*site,data=data_p1,family="binomial")),method="detect_separation")
 
-summary(glm(survival~grams,data=data_p1,family="binomial"))
-ggplot(data=data_p1,aes(x=grams,y=survival))+geom_point()+stat_smooth(method="glm",method.args=list(family="binomial"))
+summary(brglm(survival~centered+t5c,data=data_p1,family="binomial"))
+summary(brglm(survival~t5c*centered,data=data_p1,family="binomial"))
+summary(brglm(survival~t5*centered,data=data_p1,family="binomial"))
+summary(brglm(survival~t5*grams,data=data_p1,family="binomial"))
+summary(logistf(survival~centered,data=data_p1,family="binomial"))
+summary(glm(survival~centered,data=data_p1,family="binomial",method="brglm_fit"))
+
+
+summary(logistf(survival~t5c*centered,data=data_p1,family="binomial",firth=T))
+model1<-(glm(survival~t5c*centered,data=data_p1,family=binomial("probit"), method="brglm_fit"))
+summary(model1)
+update(model1,method="detect_separation")
+
+ggplot(data=data_p1,aes(x=centered,y=survival))+geom_point()+stat_smooth(method="glm",method.args=list(family="binomial"))+geom_jitter()
+
 
 #snail weight insignificant by final temperature -so randomly distributed
 summary(glm(t5~grams,data=data_p1,family="gaussian"))
 ggplot(data=data_p1,aes(x=t5,y=grams))+geom_point()+geom_smooth(method='lm')
 
-#snail weight not really signficany between acclimations, but close
+#snail weight not really signficant between acclimations, but close
 summary(lm(data=data_p1,weight~acc))
 ggplot(data=data_p1,aes(x=acc, y=weight))+geom_point()+geom_smooth()
 
@@ -600,7 +617,11 @@ summary(lm(wt.max~max*acc,prot1))
 ggplot(prot1,aes(x=max,y=wt.max,fill=acc,group=lat,shape=oce,color=acc))+theme_classic()+theme(text=element_text(family="sanserif",size=22))+labs(y="Warming Tolerance",x="Latitude")+scale_fill_manual(labels=c("20°C","24°C"),name="Acclimation", values=c('blue','red'))+scale_color_manual(labels=c("20°C","24°C"),name="Acclimation",values=c('blue','red'))+scale_shape_manual(name="Ocean",labels = c("Atlantic","Pacific"),values=c(21,24))+geom_segment(aes(x = 21.8, xend = 33.56934, y = 37.97841 -(0.95139 *21.8), yend = 37.97841 -(0.95139 *33.56934)	),size=1.5,color='blue')+geom_point(size=3)+scale_x_continuous(name=expression(paste("T"[hab], " (SST °C)")),limits=c(20,34),breaks=c(20,22,24,26,28,30,32,34))+
   geom_segment(aes(x = 21.8, xend = 33.56934, y = (37.97841+4.15862 ) +((-0.95139-0.18156) *21.8), yend = (37.97841+4.15862 ) +((-0.95139-0.18156) *33.56934)	),size=1.5,color='red')+
   scale_y_continuous(name="Warming Tolerance (°C)",limits=c(0,20),breaks=c(0,4,8,12,16,20)) 
+prot_select<-prot1%>%filter(site==c("SK","GB"))
 
+test<-ggplot(prot1,aes(x=max,y=wt.max))+theme_classic()+theme(text=element_text(family="sanserif",size=22))+labs(y="Warming Tolerance",x="Latitude")+geom_point(size=3)+scale_x_continuous(name=expression(paste("T"[hab], " (SST °C)")),limits=c(20,34),breaks=c(20,22,24,26,28,30,32,34))+
+  scale_y_continuous(name="Warming Tolerance (°C)",limits=c(0,20),breaks=c(0,4,8,12,16,20))+geom_smooth(method=lm,color="black")
 
+ggsave(test,file="test.tiff",dpi=600)
 ```
 

@@ -1,8 +1,10 @@
 library(gridExtra)
-library(tidyr)
+library(tidyverse)
 library(ggplot2)
 
-P1<-read.csv(here::here('data/heat.bar.ramping.P1.csv'))
+P<-read.csv(here::here('data/heat.bar.ramping.P1P2.csv'))
+P1<-P%>%filter(protocol=="P1")
+P2<-P%>%filter(protocol=="P2")
 P1<-na.omit(P1)
 P1$acc<-as.factor(P1$acc)
 P1[54,5] = 24.8
@@ -22,22 +24,22 @@ P120<-subset(P1_long, acc == "20")
 ##PLot of a sample P1 at 20 and 24
 ggplot(P1_long,aes(x=time,y=temp,group=interaction(col,acc), color=acc)) + geom_line()+labs(x="Time (hrs)",y="Temperature (?C)",color="acclimation temperature")
 
-P2<-read.csv(here::here('data/heat.bar.ramping.P2.csv'))
+#P2
 P2<-na.omit(P2)       
 P2$acc<-as.factor(P2$acc)
 summary(P2)
 
 ##wide to long format
 P2_long<-gather(P2,time,temp,t0:t5)
-P2_long[62,5] = 25.5
-P2_long[152,5] = 29.3
+P2_long[62,6] = 25.5
+P2_long[152,6] = 29.3
 #View(P2_long)
 
 ggplot(P2_long,aes(x=time,y=temp,group=interaction(col,acc),color=acc))+geom_line()+labs(x="Time (hrs)",y="Temperature (?C)",color="acclimation temperature")
 
 ##both!
 
-P1P2<-read.csv(here::here('data/heat.bar.ramping.P1P2.csv'))
+P1P2<-P
 P1P2<-na.omit(P1P2)
 P1P2$acc<-as.factor(P1P2$acc)
 P1P2_long<-gather(P1P2,time,temp,t0:t5)
